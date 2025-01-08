@@ -1,1 +1,0 @@
-const check: string = "hello";
