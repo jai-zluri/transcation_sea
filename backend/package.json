@@ -4,15 +4,23 @@
   "description": "building backend for transcation website",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "mikro-orm": "ts-node -r tsconfig-paths/register node_modules/.bin/mikro-orm"
   },
   "author": "Jai Krishna",
   "license": "ISC",
   "dependencies": {
+    "@mikro-orm/core": "^6.4.2",
+    "@mikro-orm/postgresql": "^6.4.2",
     "@types/node": "^22.10.5",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "reflect-metadata": "^0.2.2"
   },
   "devDependencies": {
-    "@types/pg": "^8.11.10"
+    "@mikro-orm/cli": "^6.4.2",
+    "@mikro-orm/reflection": "^6.4.2",
+    "@types/pg": "^8.11.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
   }
 }
