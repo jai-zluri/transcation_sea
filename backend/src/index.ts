@@ -1,23 +1,36 @@
 import { MikroORM } from '@mikro-orm/core';
-import 'reflect-metadata';
+import path from 'path';
+import { User } from './entities/user';
 
-import mikroOrmConfig from './mikro-orm.config';
+async function main() {
+  // Load MikroORM configuration
+  const orm = await MikroORM.init({
+    entities: [User],
+    dbName: 'your_database_name',
+    user: 'your_database_user',
+    password: 'your_database_password',
+    host: 'localhost',
+    port: 5432,
+    debug: true,
+    migrations: {
+      path: path.join(__dirname, './migrations'),
+      tableName: 'mikro_orm_migrations',
+    },
+  });
+
+  // Now MikroORM is initialized
+  console.log('MikroORM connected to PostgreSQL');
+
+  // Close ORM on exit
+  process.on('exit', async () => {
+    await orm.close(true);
+  });
+}
+
+main().catch(console.error);
 
 
-const main = async () => {
-  try {
-    // Initialize MikroORM
-    const orm = await MikroORM.init(mikroOrmConfig);
 
-    // Sync schema with the database
-    const generator = orm.getSchemaGenerator();
-    await generator.updateSchema(); // Ensure tables and schema match the entities
 
-    console.log('Mikro ORM initialized and schema updated!');
-  } catch (err) {
-    console.error('Error during Mikro ORM initialization:', err);
-  }
-};
 
-main();
 

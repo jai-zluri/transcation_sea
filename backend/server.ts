@@ -16,3 +16,9 @@ const server: Server = http.createServer((IncomingMessage, response)=>{
 server.listen(port, hostname, ()=>{
     console.log(`Node js server is started at http://${hostname}`);
 });
+
+// const app = express();
+
+// app.use((req, res, next) => {
+//   RequestContext.create(orm.em, next);
+// });
