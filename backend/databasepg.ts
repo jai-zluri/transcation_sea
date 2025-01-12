@@ -1,6 +1,6 @@
 import { Client, QueryResult } from 'pg';
 
-const client = new Client({
+const pool = new Client({
     host: "localhost",
     user: "postgres",
     port: 5432,
@@ -10,15 +10,20 @@ const client = new Client({
 
 async function fetchUsers(): Promise<void> {
     try {
-        await client.connect();
+        await pool.connect();
         const query = 'SELECT * FROM "Employee"';
-        const result: QueryResult = await client.query(query);
+        const result: QueryResult = await pool.query(query);
         console.log(result.rows);
     } catch (error) {
         console.error('Error executing query:', (error as Error).message);
     } finally {
-        await client.end();
+        await pool.end();
     }
 }
 
 fetchUsers();
+export {pool}
+
+///here client is changed to pool
+
+

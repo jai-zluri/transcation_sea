@@ -1,36 +1,46 @@
-import { MikroORM } from '@mikro-orm/core';
-import path from 'path';
-import { User } from './entities/user';
+// import express, { Application, Request, Response } from 'express';
+// import bodyParser from 'body-parser';
+// import transactionRoutes from './routes/transactions';
 
-async function main() {
-  // Load MikroORM configuration
-  const orm = await MikroORM.init({
-    entities: [User],
-    dbName: 'your_database_name',
-    user: 'your_database_user',
-    password: 'your_database_password',
-    host: 'localhost',
-    port: 5432,
-    debug: true,
-    migrations: {
-      path: path.join(__dirname, './migrations'),
-      tableName: 'mikro_orm_migrations',
-    },
-  });
+// const app: Application = express();
+// const port: number = 3000;
 
-  // Now MikroORM is initialized
-  console.log('MikroORM connected to PostgreSQL');
+// // Middleware
+// app.use(bodyParser.json());
 
-  // Close ORM on exit
-  process.on('exit', async () => {
-    await orm.close(true);
-  });
-}
+// // Routes
+// app.use('/transactions', transactionRoutes);
 
-main().catch(console.error);
+// // Test Route
+// app.get('/', (req: Request, res: Response) => {
+//   res.send('Backend is running!');
+// });
+
+// // Start Server
+// app.listen(port, () => {
+//   console.log(`Server running at http://localhost:${port}`);
+// });
 
 
 
+
+
+import express from 'express';
+import router from './routes/transactions'; // Import your routes
+
+const app = express();
+
+// Middleware for parsing JSON and handling form data
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Use the router for handling routes
+app.use('/transactions', router);
+
+// Start the server
+app.listen(5000, () => {
+  console.log('Server running on http://localhost:5000');
+});
 
 
 

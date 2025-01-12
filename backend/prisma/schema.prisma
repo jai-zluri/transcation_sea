@@ -12,3 +12,20 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// Define the model for transactions
+model Transaction {
+  id          Int       @id @default(autoincrement())
+  date        DateTime  @map("transaction_date")
+  description String
+  amount      Float
+  currency    String?   // Ensure this line exists for currency
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime? // Nullable field for soft delete
+
+  @@unique([date, description]) // Ensure no duplicate transactions with the same date and description
+  @@index([date]) // Optimize sorting and filtering by date
+}
+
+
