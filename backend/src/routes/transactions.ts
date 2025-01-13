@@ -21,99 +21,111 @@ export const upload = multer({
 
 // Upload CSV and process data
 router.post('/upload', upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+  const filePath = req.file?.path;
+
   try {
     if (!req.file) {
       res.status(400).json({ error: 'No file uploaded!' });
       return;
     }
 
-    const filePath = req.file.path;
     const transactions: any[] = [];
+    let isCSVError = false;
 
-    // Start processing the CSV file
-    fs.createReadStream(filePath)
-      .pipe(csvParser())
-      .on('data', (row) => {
-        console.log('Row Data:', row); // Log the row data for debugging
+    // Process the CSV file
+    await new Promise<void>((resolve, reject) => {
+      fs.createReadStream(filePath!)
+        .pipe(csvParser())
+        .on('data', (row) => {
+          try {
+            const date = row.Date?.trim();
+            const description = row.Description?.trim();
+            const amount = parseFloat(row.Amount?.trim() || '');
 
-        // Trim whitespace and validate row structure
-        const date = row.Date ? row.Date.trim() : ''; // Ensure correct access to Date field
-        const description = row.Description ? row.Description.trim() : '';
-        const amount = row.Amount ? parseFloat(row.Amount.trim()) : NaN;
+            // Validate and parse the date
+            if (date && description && !isNaN(amount)) {
+              const [day, month, year] = date.split('-');
+              const formattedDate = new Date(`${year}-${month}-${day}T00:00:00Z`);
 
-        // Check if date, description, and amount are valid
-        if (date && description && !isNaN(amount)) {
-          const [day, month, year] = date.split('-');
-          const formattedDate = new Date(`${year}-${month}-${day}T00:00:00Z`); // Convert to YYYY-MM-DD
+              if (!isNaN(formattedDate.getTime())) {
+                transactions.push({
+                  date: formattedDate,
+                  description,
+                  amount,
+                  currency: row.Currency?.trim() || null,
+                });
+              }
+            }
+          } catch (parseError) {
+            console.error('Error parsing row:', parseError);
+            isCSVError = true;
+          }
+        })
+        .on('end', () => resolve())
+        .on('error', (err) => reject(err));
+    });
 
-          const cleanDescription = description.split(/\s+\d+\s+USD/)[0].trim(); // Extract only relevant part
+    // Handle empty or invalid CSV files
+    if (transactions.length === 0) {
+      res.status(400).json({ error: 'CSV file is empty or contains invalid data!' });
+      return;
+    }
 
-          const transaction = {
-            date: formattedDate,
-            description: cleanDescription,
-            amount: amount,
-            currency: row.Currency || null,
-          };
+    if (isCSVError) {
+      res.status(400).json({ error: 'CSV contains malformed rows. Please fix and retry.' });
+      return;
+    }
 
-          console.log('Parsed Transaction:', transaction);
-          transactions.push(transaction);
-        } else {
-          console.warn('Row missing required fields:', { date, description, amount });
-        }
-      })
-      .on('end', async () => {
-        const validTransactions = transactions.filter((t) => t.date && t.description && !isNaN(t.amount));
-        console.log('Valid Transactions:', validTransactions);
-
-        const uniqueTransactions = validTransactions.filter((value, index, self) =>
-          index === self.findIndex((t) => t.date.getTime() === value.date.getTime() && t.description === value.description),
-        );
-
-        console.log('Unique Transactions:', uniqueTransactions);
-
-        try {
-          // Insert valid data into the database
-          await prisma.transaction.createMany({
-            data: uniqueTransactions.map(transaction => ({
-              date: transaction.date,
-              description: transaction.description,
-              amount: transaction.amount,
-              currency: transaction.category || null,
-            })),
-            skipDuplicates: true,
-          });
-
-          return res.status(200).json({
-            message: 'File processed and transactions saved successfully!',
-            inserted: uniqueTransactions.length,
-          });
-        } catch (dbError) {
-          console.error('Database Error:', dbError); // Log detailed error
-
-          const errorMessage = dbError instanceof Error ? dbError.message : 'An unknown error occurred';
-
-          return res.status(500).json({ 
-            error: 'Failed to save transactions to the database.', 
-            details: errorMessage 
-          });
-        } finally {
-          fs.unlinkSync(filePath); // Clean up uploaded file regardless of success or failure
-        }
-      })
-      .on('error', (error) => {
-        console.error('Error reading CSV:', error);
-        res.status(500).json({ error: 'Failed to read the uploaded CSV file.' });
+    // Save transactions to the database
+    try {
+      const inserted = await prisma.transaction.createMany({
+        data: transactions,
+        skipDuplicates: true,  // Skips duplicate transactions
       });
+
+      res.status(200).json({
+        message: 'File processed and transactions saved successfully!',
+        inserted: inserted.count,
+      });
+      return;
+    } catch (dbError) {
+      console.error('Database Error:', dbError);
+      res.status(500).json({
+        error: 'Failed to save transactions to the database.',
+        details: dbError instanceof Error ? dbError.message : 'Unknown error',
+      });
+      return;
+    }
   } catch (error) {
-    console.error(error);
+    console.error('Processing Error:', error);
     res.status(500).json({ error: 'Failed to process the uploaded file.' });
+    return;
+  } finally {
+    // Clean up uploaded file
+    if (filePath) {
+      fs.unlink(filePath, (err) => {
+        if (err) console.error('Error deleting file:', err);
+      });
+    }
   }
 });
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Fetch all transactions
 router.get('/transactions', async (req: Request, res: Response) => {
   try {
-    const transactions = await prisma.transaction.findMany(); // Fetch all transactions
+    const transactions = await prisma.transaction.findMany();
     res.json(transactions);
   } catch (error) {
     console.error(error);
@@ -124,7 +136,7 @@ router.get('/transactions', async (req: Request, res: Response) => {
 // Fetch paginated transactions
 router.get('/transactions/paginated', async (req, res) => {
   const page = parseInt(req.query.page as string) || 1;
-  const limit = parseInt(req.query.limit as string) || 10; // Default limit
+  const limit = parseInt(req.query.limit as string) || 10;
   const offset = (page - 1) * limit;
 
   try {
@@ -136,9 +148,10 @@ router.get('/transactions/paginated', async (req, res) => {
       }),
       prisma.transaction.count(),
     ]);
-    
+
     res.json({ transactions, totalCount });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Failed to fetch transactions.' });
   }
 });
@@ -151,8 +164,6 @@ interface TransactionRequestBody {
   currency?: string; // Optional
 }
 
-
-
 router.post('/transactions', async (req: Request<{}, {}, TransactionRequestBody>, res: Response): Promise<any> => {
   const { date, description, amount, currency } = req.body;
 
@@ -164,10 +175,7 @@ router.post('/transactions', async (req: Request<{}, {}, TransactionRequestBody>
   try {
     // Check for duplicates
     const existingTransaction = await prisma.transaction.findFirst({
-      where: {
-        date: new Date(date),
-        description,
-      },
+      where: { date: new Date(date), description },
     });
 
     if (existingTransaction) {
@@ -175,12 +183,7 @@ router.post('/transactions', async (req: Request<{}, {}, TransactionRequestBody>
     }
 
     const transaction = await prisma.transaction.create({
-      data: {
-        date: new Date(date),
-        description,
-        amount,
-        currency,
-      },
+      data: { date: new Date(date), description, amount, currency },
     });
 
     res.status(201).json(transaction);
@@ -190,9 +193,6 @@ router.post('/transactions', async (req: Request<{}, {}, TransactionRequestBody>
   }
 });
 
-
-
-
 // Edit an existing transaction
 router.put('/transactions/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -201,12 +201,7 @@ router.put('/transactions/:id', async (req: Request, res: Response) => {
   try {
     const updatedTransaction = await prisma.transaction.update({
       where: { id: parseInt(id) },
-      data: {
-        date: new Date(date),
-        description,
-        amount,
-        currency,
-      },
+      data: { date: new Date(date), description, amount, currency },
     });
 
     res.json(updatedTransaction);
@@ -243,3 +238,4 @@ router.delete('/transactions/:id', async (req: Request, res: Response) => {
 });
 
 export default router;
+

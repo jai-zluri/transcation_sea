@@ -28,4 +28,12 @@ model Transaction {
   @@index([date]) // Optimize sorting and filtering by date
 }
 
+// Define the model for CSVFile
+// model CSVFile {
+//   id        Int      @id @default(autoincrement())
+//   name      String
+//   file      Json     // You can store the parsed CSV data as JSON
+//   createdAt DateTime @default(now())
+// }
+
 
