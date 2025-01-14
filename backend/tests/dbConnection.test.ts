@@ -1,5 +1,3 @@
-// tests/dbConnection.test.ts
-
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -16,7 +14,6 @@ describe('Database Connection', () => {
   });
 
   it('should connect to the database', async () => {
-    // Check if the connection is established by querying a simple operation
     const transactionCount = await prisma.transaction.count();
     expect(transactionCount).toBeGreaterThanOrEqual(0); // Expect at least 0 transactions
   });

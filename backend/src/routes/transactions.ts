@@ -76,7 +76,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
       return;
     }
 
-    // Save transactions to the database
+    // Insert transactions into the database
     try {
       const inserted = await prisma.transaction.createMany({
         data: transactions,
@@ -109,13 +109,6 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     }
   }
 });
-
-
-
-
-
-
-
 
 
 
@@ -193,41 +186,80 @@ router.post('/transactions', async (req: Request<{}, {}, TransactionRequestBody>
   }
 });
 
+
+
+
 // Edit an existing transaction
-router.put('/transactions/:id', async (req: Request, res: Response) => {
+router.put('/transactions/:id', async (req: Request, res: Response) : Promise<any>  => {
   const { id } = req.params;
   const { date, description, amount, currency } = req.body;
 
   try {
+    // Validate that all necessary fields are provided
+    if (!date || !description || !amount || !currency) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+       // Ensure the 'id' is valid
+       const transactionId = parseInt(id, 10);
+       if (isNaN(transactionId)) {
+         return res.status(400).json({ error: 'Invalid transaction ID' });
+       }
+
+
+
     const updatedTransaction = await prisma.transaction.update({
       where: { id: parseInt(id) },
-      data: { date: new Date(date), description, amount, currency },
+      data: { 
+        date: new Date(date), 
+        description, 
+        amount, 
+        currency 
+      },
     });
+
+    if (!updatedTransaction) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
 
     res.json(updatedTransaction);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to update transaction.' });
+    let errorMessage = "Failed to update transaction";
+    
+    // Enhance error handling to capture different error types
+    if (error instanceof Error) {
+      // Standard error handling
+      errorMessage = error.message;
+    } else if (error && typeof error === 'object' && 'customMessage' in error) {
+      // Handle custom error messages if present
+      errorMessage = (error as { customMessage: string }).customMessage;
+    }
+
+    console.error(errorMessage);
+    res.status(500).json({ error: errorMessage });
   }
 });
 
+
 // Delete a transaction (soft or hard delete)
-router.delete('/transactions/:id', async (req: Request, res: Response) => {
+
+router.delete('/transactions/:id', async (req: Request, res: Response): Promise<any> => {
   const { id } = req.params;
-  const isHardDelete = req.query.hard === 'true'; // Check if hard delete is requested
+
+  // Validate the id
+  const transactionId = parseInt(id, 10);
+  if (isNaN(transactionId)) {
+    return res.status(400).json({ error: 'Invalid transaction ID' });
+  }
 
   try {
-    if (isHardDelete) {
-      // Perform hard delete
-      await prisma.transaction.delete({
-        where: { id: parseInt(id) },
-      });
-    } else {
-      // Perform soft delete
-      await prisma.transaction.update({
-        where: { id: parseInt(id) },
-        data: { deletedAt: new Date() }, // Soft delete by setting deletedAt timestamp
-      });
+    // Perform soft delete
+    const deletedTransaction = await prisma.transaction.update({
+      where: { id: transactionId },
+      data: { deletedAt: new Date() }, // Mark as deleted with current timestamp
+    });
+
+    if (!deletedTransaction) {
+      return res.status(404).json({ error: 'Transaction not found' });
     }
 
     res.status(204).send(); // No content response
@@ -236,6 +268,7 @@ router.delete('/transactions/:id', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to delete transaction.' });
   }
 });
+
 
 export default router;
 

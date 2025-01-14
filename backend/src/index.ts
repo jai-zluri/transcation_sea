@@ -20,3 +20,4 @@ const server = app.listen(PORT, () => {
 });
 
 export { app, server }; // Export both app and server for testing
+

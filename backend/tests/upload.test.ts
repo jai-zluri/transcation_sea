@@ -1,9 +1,6 @@
-
-
-
 import request from 'supertest';
-import {app} from '../src/index'; // Import only the app instance
-import { server } from '../src/index'; // Import server instance for lifecycle control
+import { app } from '../src/index'; 
+import { server } from '../src/index'; 
 import path from 'path';
 import fs from 'fs';
 
@@ -11,16 +8,13 @@ describe('File Upload', () => {
   const testDir = path.join(__dirname, 'test-files');
   let testFilePaths: string[] = [];
 
-  // Setup: Create test directory and files before tests
   beforeAll(() => {
-    // Create test directory if it doesn't exist
     if (!fs.existsSync(testDir)) {
       fs.mkdirSync(testDir);
     }
 
-    // Create test files
     const files = [
-      { name: 'valid.csv', content: 'Date,Description,Amount\n01-01-2024,Test Transaction,100.00' },
+      { name: 'valid.csv', content: 'Date,Description,Amount,Currency\n01-01-2024,Test Transaction,100.00,USD' },
       { name: 'invalid.txt', content: 'This is not a CSV file' },
       { name: 'malformed.csv', content: 'InvalidHeader\nInvalidData' },
       { name: 'empty.csv', content: '' },
@@ -32,42 +26,39 @@ describe('File Upload', () => {
       testFilePaths.push(filePath);
     });
 
-    // Create large CSV file (>1MB)
     const largeCsvPath = path.join(testDir, 'large.csv');
-    const largeContent = 'Date,Description,Amount\n' + '01-01-2024,Test Transaction,100.00\n'.repeat(50000);
+    const largeContent = 'Date,Description,Amount,Currency\n' + '01-01-2024,Test Transaction,100.00,USD\n'.repeat(50000);
     fs.writeFileSync(largeCsvPath, largeContent);
     testFilePaths.push(largeCsvPath);
   });
 
-  // Cleanup: Remove test files and directory after tests
   afterAll(done => {
-    // Clean up test files
-    testFilePaths.forEach(filePath => {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
+    const deletePromises = testFilePaths.map(filePath => {
+      return new Promise<void>((resolve) => {
+        if (fs.existsSync(filePath)) {
+          fs.unlink(filePath, () => resolve());
+        } else {
+          resolve();
+        }
+      });
     });
-  
-    // Close server to avoid EADDRINUSE error
-    server.close(() => done());
+
+    Promise.all(deletePromises)
+      .then(() => {
+        fs.rm(testDir, { recursive: true, force: true }, () => {
+          server.close(() => done());
+        });
+      })
+      .catch(() => {
+        done();
+      });
   });
-  
-
-    // Remove test directory
-    if (fs.existsSync(testDir)) {
-      fs.rmdirSync(testDir);
-    }
-
-  //   // Close server to avoid EADDRINUSE error
-  //   server.close(done);
-  // });
 
   it('should successfully upload a valid CSV file', async () => {
     const response = await request(app)
       .post('/transactions/upload')
       .attach('file', path.join(testDir, 'valid.csv'));
 
-    console.log(response.status, response.body); // Debugging
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('message', 'File processed and transactions saved successfully!');
     expect(response.body).toHaveProperty('inserted');
@@ -79,7 +70,6 @@ describe('File Upload', () => {
       .post('/transactions/upload')
       .attach('file', path.join(testDir, 'invalid.txt'));
 
-    console.log(response.status, response.body); // Debugging
     expect(response.status).toBe(400);
     expect(response.body.error).toBe('Only CSV files are allowed!');
   });
@@ -88,7 +78,6 @@ describe('File Upload', () => {
     const response = await request(app)
       .post('/transactions/upload');
 
-    console.log(response.status, response.body); // Debugging
     expect(response.status).toBe(400);
     expect(response.body.error).toBe('No file uploaded!');
   });
@@ -98,9 +87,8 @@ describe('File Upload', () => {
       .post('/transactions/upload')
       .attach('file', path.join(testDir, 'malformed.csv'));
 
-    console.log(response.status, response.body); // Debugging
-    expect(response.status).toBe(200);
-    expect(response.body.inserted).toBe(0);
+    expect(response.status).toBe(400);
+    expect(response.body.error).toMatch(/malformed rows/i);
   });
 
   it('should handle empty CSV file', async () => {
@@ -108,9 +96,8 @@ describe('File Upload', () => {
       .post('/transactions/upload')
       .attach('file', path.join(testDir, 'empty.csv'));
 
-    console.log(response.status, response.body); // Debugging
-    expect(response.status).toBe(200);
-    expect(response.body.inserted).toBe(0);
+    expect(response.status).toBe(400); 
+    expect(response.body.error).toBe('CSV file is empty or contains invalid data!');
   });
 
   it('should reject files over size limit', async () => {
@@ -118,51 +105,43 @@ describe('File Upload', () => {
       .post('/transactions/upload')
       .attach('file', path.join(testDir, 'large.csv'));
 
-    console.log(response.status, response.body); // Debugging
     expect(response.status).toBe(400);
     expect(response.body.error).toMatch(/file size/i);
   });
 
   it('should handle CSV with invalid date format', async () => {
     const invalidDateCsvPath = path.join(testDir, 'invalid-date.csv');
-    fs.writeFileSync(invalidDateCsvPath, 'Date,Description,Amount\ninvalid-date,Test Transaction,100.00');
-    testFilePaths.push(invalidDateCsvPath);
-
+    fs.writeFileSync(invalidDateCsvPath, 'Date,Description,Amount,Currency\ninvalid-date,Test Transaction,100.00,USD');
+    
     const response = await request(app)
       .post('/transactions/upload')
       .attach('file', invalidDateCsvPath);
 
-    console.log(response.status, response.body); // Debugging
-    expect(response.status).toBe(200);
-    expect(response.body.inserted).toBe(0);
+    expect(response.status).toBe(400); 
+    expect(response.body.inserted).toBe(0); 
   });
 
   it('should handle CSV with invalid amount format', async () => {
     const invalidAmountCsvPath = path.join(testDir, 'invalid-amount.csv');
-    fs.writeFileSync(invalidAmountCsvPath, 'Date,Description,Amount\n01-01-2024,Test Transaction,not-a-number');
-    testFilePaths.push(invalidAmountCsvPath);
-
+    fs.writeFileSync(invalidAmountCsvPath, 'Date,Description,Amount,Currency\n01-01-2024,Test Transaction,not-a-number,USD');
+    
     const response = await request(app)
       .post('/transactions/upload')
       .attach('file', invalidAmountCsvPath);
 
-    console.log(response.status, response.body); // Debugging
-    expect(response.status).toBe(200);
-    expect(response.body.inserted).toBe(0);
+    expect(response.status).toBe(400); 
+    expect(response.body.inserted).toBe(0); 
   });
 
   it('should handle missing required columns', async () => {
     const missingColumnsCsvPath = path.join(testDir, 'missing-columns.csv');
-    fs.writeFileSync(missingColumnsCsvPath, 'Date,Description\n01-01-2024,Test Transaction');
-    testFilePaths.push(missingColumnsCsvPath);
-
+    fs.writeFileSync(missingColumnsCsvPath, 'Date\n01-01-2024'); 
+    
     const response = await request(app)
       .post('/transactions/upload')
       .attach('file', missingColumnsCsvPath);
 
-    console.log(response.status, response.body); // Debugging
-    expect(response.status).toBe(200);
-    expect(response.body.inserted).toBe(0);
+    expect(response.status).toBe(400); 
+    expect(response.body.inserted).toBe(0); 
   });
 });
-

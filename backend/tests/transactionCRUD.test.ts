@@ -1,12 +1,7 @@
-
-
 import request from 'supertest';
-// import './jest.setup.js';
-
-import {app} from '../src/index'; // Adjust the path as necessary
+import { app } from '../src/index';
 
 describe('Transaction CRUD Operations', () => {
-  
   it('should create a new transaction', async () => {
     const response = await request(app)
       .post('/transactions/transactions')
@@ -39,11 +34,10 @@ describe('Transaction CRUD Operations', () => {
       .get('/transactions/transactions');
 
     expect(response.status).toBe(200);
-    expect(Array.isArray(response.body)).toBe(true); // Check that the response is an array
+    expect(Array.isArray(response.body)).toBe(true);
   });
 
   it('should update an existing transaction', async () => {
-    // First create a transaction to update
     const createResponse = await request(app)
       .post('/transactions/transactions')
       .send({
@@ -69,7 +63,6 @@ describe('Transaction CRUD Operations', () => {
   });
 
   it('should delete a transaction', async () => {
-    // First create a transaction to delete
     const createResponse = await request(app)
       .post('/transactions/transactions')
       .send({
@@ -85,9 +78,10 @@ describe('Transaction CRUD Operations', () => {
       .delete(`/transactions/transactions/${transactionId}`)
       .send();
 
-    expect(deleteResponse.status).toBe(204); // No content response
+    expect(deleteResponse.status).toBe(204);
   });
 });
+
 
 
 
