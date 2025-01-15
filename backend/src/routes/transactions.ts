@@ -19,7 +19,7 @@ export const upload = multer({
   limits: { fileSize: 1 * 1024 * 1024 }, // Limit file size to 1 MB
 });
 
-// Upload CSV and process data
+
 router.post('/upload', upload.single('file'), async (req: Request, res: Response): Promise<void> => {
   const filePath = req.file?.path;
 
@@ -168,7 +168,7 @@ router.post('/transactions', async (req: Request<{}, {}, TransactionRequestBody>
   try {
     // Check for duplicates
     const existingTransaction = await prisma.transaction.findFirst({
-      where: { date: new Date(date), description },
+      where: { date, description, amount, currency },
     });
 
     if (existingTransaction) {
@@ -190,7 +190,59 @@ router.post('/transactions', async (req: Request<{}, {}, TransactionRequestBody>
 
 
 // Edit an existing transaction
-router.put('/transactions/:id', async (req: Request, res: Response) : Promise<any>  => {
+
+
+// router.put('/transactions/:id', async (req: Request, res: Response) : Promise<any>  => {
+//   const { id } = req.params;
+//   const { date, description, amount, currency } = req.body;
+
+//   try {
+//     // Validate that all necessary fields are provided
+//     if (!date || !description || !amount || !currency) {
+//       return res.status(400).json({ error: 'Missing required fields' });
+//     }
+//        // Ensure the 'id' is valid
+//        const transactionId = parseInt(id, 10);
+//        if (isNaN(transactionId)) {
+//          return res.status(400).json({ error: 'Invalid transaction ID' });
+//        }
+
+
+
+//     const updatedTransaction = await prisma.transaction.update({
+//       where: { id: parseInt(id) },
+//       data: { 
+//         date: new Date(date), 
+//         description, 
+//         amount, 
+//         currency 
+//       },
+//     });
+
+//     if (!updatedTransaction) {
+//       return res.status(404).json({ error: 'Transaction not found' });
+//     }
+
+//     res.json(updatedTransaction);
+//   } catch (error) {
+//     let errorMessage = "Failed to update transaction";
+    
+//     // Enhance error handling to capture different error types
+//     if (error instanceof Error) {
+//       // Standard error handling
+//       errorMessage = error.message;
+//     } else if (error && typeof error === 'object' && 'customMessage' in error) {
+//       // Handle custom error messages if present
+//       errorMessage = (error as { customMessage: string }).customMessage;
+//     }
+
+//     console.error(errorMessage);
+//     res.status(500).json({ error: errorMessage });
+//   }
+// });
+
+// Edit an existing transaction
+router.put('/transactions/:id', async (req: Request, res: Response): Promise<any> => {
   const { id } = req.params;
   const { date, description, amount, currency } = req.body;
 
@@ -199,38 +251,41 @@ router.put('/transactions/:id', async (req: Request, res: Response) : Promise<an
     if (!date || !description || !amount || !currency) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-       // Ensure the 'id' is valid
-       const transactionId = parseInt(id, 10);
-       if (isNaN(transactionId)) {
-         return res.status(400).json({ error: 'Invalid transaction ID' });
-       }
 
+    // Ensure the 'id' is valid
+    const transactionId = parseInt(id, 10);
+    if (isNaN(transactionId)) {
+      return res.status(400).json({ error: 'Invalid transaction ID' });
+    }
 
-
-    const updatedTransaction = await prisma.transaction.update({
-      where: { id: parseInt(id) },
-      data: { 
-        date: new Date(date), 
-        description, 
-        amount, 
-        currency 
-      },
+    // Check if the transaction exists
+    const existingTransaction = await prisma.transaction.findUnique({
+      where: { id: transactionId },
     });
 
-    if (!updatedTransaction) {
+    if (!existingTransaction) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
+    // Proceed with the update
+    const updatedTransaction = await prisma.transaction.update({
+      where: { id: transactionId },
+      data: {
+        date: new Date(date),
+        description,
+        amount,
+        currency,
+      },
+    });
+
     res.json(updatedTransaction);
   } catch (error) {
-    let errorMessage = "Failed to update transaction";
-    
+    let errorMessage = 'Failed to update transaction';
+
     // Enhance error handling to capture different error types
     if (error instanceof Error) {
-      // Standard error handling
       errorMessage = error.message;
     } else if (error && typeof error === 'object' && 'customMessage' in error) {
-      // Handle custom error messages if present
       errorMessage = (error as { customMessage: string }).customMessage;
     }
 
@@ -238,6 +293,7 @@ router.put('/transactions/:id', async (req: Request, res: Response) : Promise<an
     res.status(500).json({ error: errorMessage });
   }
 });
+
 
 
 // Delete a transaction (soft or hard delete)
