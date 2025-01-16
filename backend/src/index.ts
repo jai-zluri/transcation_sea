@@ -1,23 +1,24 @@
-
-
-
 import express from 'express';
-import router from './routes/transactions'; // Import your routes
+import dotenv from 'dotenv';
+import router from './routes/transactionRoutes';
+
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware for parsing JSON and handling form data
+// Middleware to parse incoming requests
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Use the router for handling routes
+// Routes
 app.use('/transactions', router);
 
-// Start the server
-const server = app.listen(PORT, () => {
+// Start server
+
+ const server=app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
 
-export { app, server }; // Export both app and server for testing
+export { app , server};
 

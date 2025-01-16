@@ -1,3 +1,4 @@
+
 import request from 'supertest';
 import { app } from '../src/index'; 
 import { server } from '../src/index'; 
@@ -19,6 +20,7 @@ describe('File Upload', () => {
       { name: 'invalid.txt', content: 'This is not a CSV file' },
       { name: 'malformed.csv', content: 'InvalidHeader\nInvalidData' },
       { name: 'empty.csv', content: '' },
+      // Add more files if necessary to cover edge cases
     ];
 
     files.forEach(file => {
@@ -89,7 +91,7 @@ describe('File Upload', () => {
       .attach('file', path.join(testDir, 'malformed.csv'));
 
     expect(response.status).toBe(400);
-    expect(response.body.error).toMatch(/malformed rows/i);
+    expect(response.body.error).toBe('No valid transactions found in the uploaded file.');
   });
 
   it('should handle empty CSV file', async () => {
@@ -97,8 +99,8 @@ describe('File Upload', () => {
       .post('/transactions/upload')
       .attach('file', path.join(testDir, 'empty.csv'));
 
-    expect(response.status).toBe(400); 
-    expect(response.body.error).toBe('CSV file is empty or contains invalid data!');
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Uploaded CSV file is empty.');
   });
 
   it('should reject files over size limit', async () => {
@@ -107,7 +109,7 @@ describe('File Upload', () => {
       .attach('file', path.join(testDir, 'large.csv'));
 
     expect(response.status).toBe(400);
-    expect(response.body.error).toMatch(/file size/i);
+    expect(response.body.error).toMatch(/file size/i); // Ensure the file size error is properly matched
   });
 
   it('should handle CSV with invalid date format', async () => {
@@ -119,7 +121,7 @@ describe('File Upload', () => {
       .attach('file', invalidDateCsvPath);
 
     expect(response.status).toBe(400); 
-    expect(response.body.inserted).toBe(0); 
+    expect(response.body.error).toBe('CSV contains malformed rows. Please fix and retry.');
   });
 
   it('should handle CSV with invalid amount format', async () => {
@@ -131,7 +133,7 @@ describe('File Upload', () => {
       .attach('file', invalidAmountCsvPath);
 
     expect(response.status).toBe(400); 
-    expect(response.body.inserted).toBe(0); 
+    expect(response.body.error).toBe('CSV contains malformed rows. Please fix and retry.');
   });
 
   it('should handle missing required columns', async () => {
@@ -143,6 +145,6 @@ describe('File Upload', () => {
       .attach('file', missingColumnsCsvPath);
 
     expect(response.status).toBe(400); 
-    expect(response.body.inserted).toBe(0); 
+    expect(response.body.error).toBe('CSV contains malformed rows. Please fix and retry.');
   });
 });

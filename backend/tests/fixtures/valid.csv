@@ -1,3 +1,3 @@
-id,name,amount
-1,John Doe,100.50
-2,Jane Doe,200.75
+Date,Description,Amount,Currency
+12-01-2025,Test description,100,USD
+13-01-2025,Another test,200,EUR
