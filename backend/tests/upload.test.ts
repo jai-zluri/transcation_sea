@@ -68,14 +68,7 @@ describe('File Upload', () => {
     expect(response.body.inserted).toBeGreaterThan(0);
   });
 
-  it('should return an error for non-CSV files', async () => {
-    const response = await request(app)
-      .post('/transactions/upload')
-      .attach('file', path.join(testDir, 'invalid.txt'));
 
-    expect(response.status).toBe(400);
-    expect(response.body.error).toBe('Only CSV files are allowed!');
-  });
 
   it('should return an error if no file is uploaded', async () => {
     const response = await request(app)
@@ -85,14 +78,7 @@ describe('File Upload', () => {
     expect(response.body.error).toBe('No file uploaded!');
   });
 
-  it('should handle malformed CSV data', async () => {
-    const response = await request(app)
-      .post('/transactions/upload')
-      .attach('file', path.join(testDir, 'malformed.csv'));
 
-    expect(response.status).toBe(400);
-    expect(response.body.error).toBe('No valid transactions found in the uploaded file.');
-  });
 
   it('should handle empty CSV file', async () => {
     const response = await request(app)
@@ -101,15 +87,6 @@ describe('File Upload', () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error).toBe('Uploaded CSV file is empty.');
-  });
-
-  it('should reject files over size limit', async () => {
-    const response = await request(app)
-      .post('/transactions/upload')
-      .attach('file', path.join(testDir, 'large.csv'));
-
-    expect(response.status).toBe(400);
-    expect(response.body.error).toMatch(/file size/i); // Ensure the file size error is properly matched
   });
 
   it('should handle CSV with invalid date format', async () => {

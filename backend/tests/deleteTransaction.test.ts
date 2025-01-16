@@ -8,7 +8,9 @@ describe('deleteTransaction', () => {
   let res: Partial<Response>;
 
   beforeEach(() => {
-    req = {};
+    req = {
+      query: {}  // Initialize req.query to avoid undefined error
+    };
     res = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn(),
@@ -45,6 +47,17 @@ describe('deleteTransaction', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({ error: 'Missing transaction ID.' });
+  });
+
+  it('should handle missing "hard" query parameter (defaults to soft delete)', async () => {
+    req.params = { id: '1' };
+    req.query = {};  // Missing hard query parameter, should default to soft delete
+    (prisma.transaction.update as jest.Mock).mockResolvedValue({});
+
+    await deleteTransaction(req as Request, res as Response);
+
+    expect(res.status).toHaveBeenCalledWith(204);
+    expect(res.send).toHaveBeenCalled();
   });
 
   it('should handle errors while deleting a transaction (Database error)', async () => {
