@@ -1,4 +1,6 @@
 
+
+
 import { updateTransaction } from '../src/services/transactionService';
 import prisma from '../src/prisma/client';
 import { Request, Response } from 'express';
@@ -37,6 +39,50 @@ describe('updateTransaction', () => {
     // Expecting a 400 response with an error message
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({ error: 'Missing transaction ID.' });
+  });
+
+  it('should return an error for invalid date (February 30th)', async () => {
+    req.params = { id: '1' };
+    req.body = { date: '2025-02-30', description: 'Updated', amount: 200.5, currency: 'EUR' };
+
+    await updateTransaction(req as Request, res as Response);
+
+    // Expecting a 400 response with an error message for invalid date
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Invalid date format.' });
+  });
+
+  it('should return an error for invalid date (31st February)', async () => {
+    req.params = { id: '1' };
+    req.body = { date: '2025-02-31', description: 'Updated', amount: 200.5, currency: 'EUR' };
+
+    await updateTransaction(req as Request, res as Response);
+
+    // Expecting a 400 response with an error message for invalid date
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Invalid date format.' });
+  });
+
+  it('should return an error for invalid date (April 31st)', async () => {
+    req.params = { id: '1' };
+    req.body = { date: '2025-04-31', description: 'Updated', amount: 200.5, currency: 'EUR' };
+
+    await updateTransaction(req as Request, res as Response);
+
+    // Expecting a 400 response with an error message for invalid date
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Invalid date format.' });
+  });
+
+  it('should return an error for invalid date (Invalid month)', async () => {
+    req.params = { id: '1' };
+    req.body = { date: '2025-13-15', description: 'Updated', amount: 200.5, currency: 'EUR' };
+
+    await updateTransaction(req as Request, res as Response);
+
+    // Expecting a 400 response with an error message for invalid month
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Invalid date format.' });
   });
 
   it('should handle errors while updating a transaction (Database error)', async () => {

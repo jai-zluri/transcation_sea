@@ -22,7 +22,7 @@ router.get('/transactions', getTransactions);
 router.get('/transactions/paginated', getPaginatedTransactions);
 
 // Add a new transaction
-router.put('/transactions', addTransaction);
+router.post('/transactions', addTransaction);
 
 // Update an existing transaction
 router.put('/transactions/:id', updateTransaction);

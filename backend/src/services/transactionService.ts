@@ -1,12 +1,10 @@
+
 import { Request, Response } from 'express';
 import fs from 'fs';
 import csvParser from 'csv-parser';
 import prisma from '../prisma/client';
 
-// Process uploaded CSV file
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
-
-
+const MAX_FILE_SIZE = 1 * 1024 * 1024; 
 
 export const processCsvFile = async (req: Request, res: Response): Promise<void> => {
   if (!req.file) {
@@ -14,8 +12,9 @@ export const processCsvFile = async (req: Request, res: Response): Promise<void>
     return;
   }
 
-  // Check file type (ensure it's a CSV)
   const file = req.file;
+
+  // Check file type (ensure it's a CSV)
   if (file.mimetype !== 'text/csv') {
     res.status(400).json({ error: 'Only CSV files are allowed!' });
     return;
@@ -23,7 +22,7 @@ export const processCsvFile = async (req: Request, res: Response): Promise<void>
 
   // Check file size limit
   if (file.size > MAX_FILE_SIZE) {
-    res.status(400).json({ error: 'File size exceeds the limit of 10MB.' });
+    res.status(400).json({ error: 'File size exceeds the limit of 1MB.' });
     return;
   }
 
@@ -36,12 +35,11 @@ export const processCsvFile = async (req: Request, res: Response): Promise<void>
   fs.createReadStream(filePath)
     .pipe(csvParser())
     .on('data', (row) => {
-      isEmpty = false; // If data is found, the file isn't empty
+      isEmpty = false; 
       const date = row.Date?.trim();
       const description = row.Description?.trim();
       const amount = parseFloat(row.Amount?.trim());
 
-      // Check for invalid date format (e.g. 'dd-mm-yyyy')
       if (date) {
         const [day, month, year] = date.split('-');
         if (day && month && year) {
@@ -61,12 +59,10 @@ export const processCsvFile = async (req: Request, res: Response): Promise<void>
         }
       }
 
-      // Check for valid amount (must be a number)
       if (isNaN(amount)) {
         malformedRows = true;
       }
 
-      // Ensure all required columns exist
       if (!date || !description || isNaN(amount)) {
         malformedRows = true;
       }
@@ -77,7 +73,6 @@ export const processCsvFile = async (req: Request, res: Response): Promise<void>
         return;
       }
 
-      // Handle malformed data (no valid transactions found)
       if (malformedRows) {
         res.status(400).json({ error: 'CSV contains malformed rows. Please fix and retry.' });
         return;
@@ -99,34 +94,40 @@ export const processCsvFile = async (req: Request, res: Response): Promise<void>
           res.status(500).json({ error: 'An unexpected error occurred.' });
         }
       } finally {
-        // Clean up the uploaded file
         fs.unlinkSync(filePath);
       }
     })
-    .on('error', (err) => {
-      if (err instanceof Error) {
-        res.status(500).json({ error: 'Error reading CSV file.', details: err.message });
-      } else {
-        res.status(500).json({ error: 'An unexpected error occurred.' });
-      }
-    });
+  
 };
 
 
 
-// Get all transactions
 export const getTransactions = async (req: Request, res: Response): Promise<void> => {
   try {
-    const transactions = await prisma.transaction.findMany();
-    res.json(transactions);
+    const transactions = await prisma.transaction.findMany({
+      orderBy: {
+        date: 'desc', 
+        
+      },
+    });
+    res.json(transactions); 
+  
   } catch (err) {
     if (err instanceof Error) {
-      res.status(500).json({ error: 'Failed to fetch transactions.', details: err.message });
+      res.status(500).json({
+        error: 'Failed to fetch transactions.',
+        details: err.message, // Provides details about the error
+      });
     } else {
-      res.status(500).json({ error: 'An unexpected error occurred.' });
+      res.status(500).json({
+        error: 'An unexpected error occurred.',
+      });
     }
   }
 };
+
+
+
 
 // Get paginated transactions
 export const getPaginatedTransactions = async (req: Request, res: Response): Promise<void> => {
@@ -149,18 +150,33 @@ export const getPaginatedTransactions = async (req: Request, res: Response): Pro
   }
 };
 
-// Add a transaction
+
 export const addTransaction = async (req: Request, res: Response): Promise<void> => {
   const { date, description, amount, currency } = req.body;
 
+  // Check for missing required fields
   if (!date || !description || typeof amount !== 'number') {
     res.status(400).json({ error: 'Missing required fields.' });
     return;
   }
 
+  // Validate the date
+  const parsedDate = new Date(date);
+  const month = parsedDate.getMonth() + 1; // getMonth() returns 0-based month (0 = January, 1 = February, etc.)
+  const day = parsedDate.getDate();
+
+  // Check if the day is valid based on the month
+  if (
+    (month === 2 && day < 1 || day > 29) || // For February, only days 1-29 are valid
+    (month !== 2 && day < 1 || day > 31)   // For other months, only days 1-31 are valid
+  ) {
+    res.status(400).json({ error: 'Invalid date. Day should be between 1-29 for February or 1-31 for other months.' });
+    return;
+  }
+
   try {
     const transaction = await prisma.transaction.create({
-      data: { date: new Date(date), description, amount, currency },
+      data: { date: parsedDate, description, amount, currency },
     });
     res.status(201).json(transaction);
   } catch (err) {
@@ -172,39 +188,48 @@ export const addTransaction = async (req: Request, res: Response): Promise<void>
   }
 };
 
-// // Update a transaction
+
+
+
+
+//update
+
+
+
 export const updateTransaction = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const { date, description, amount, currency } = req.body;
 
-  // Validate if the transaction ID is valid
+  // Check if transaction ID is valid
   if (!id || isNaN(Number(id))) {
-    res.status(400).json({ error: 'Missing transaction ID.' });  // Change the error message here
+    res.status(400).json({ error: 'Missing transaction ID.' });
+    return;
+  }
+
+  // Validate the date format
+  if (!isValidDate(date)) {
+    res.status(400).json({ error: 'Invalid date format.' });
     return;
   }
 
   try {
-    // Attempt to update the transaction in the database
     const updatedTransaction = await prisma.transaction.update({
       where: { id: parseInt(id) },
       data: {
-        date: new Date(date), // Ensure date is a valid Date object
+        date: new Date(date),
         description,
         amount,
         currency,
       },
     });
 
-    // If transaction is not found, return 404
     if (!updatedTransaction) {
       res.status(404).json({ error: 'Transaction not found.' });
       return;
     }
 
-    // Return the updated transaction with a 200 status code
     res.status(200).json(updatedTransaction);
   } catch (err) {
-    // Handle different error types appropriately
     if (err instanceof Error) {
       res.status(500).json({ error: 'Failed to update transaction.', details: err.message });
     } else {
@@ -213,39 +238,47 @@ export const updateTransaction = async (req: Request, res: Response): Promise<vo
   }
 };
 
+// Helper function to validate the date
+const isValidDate = (date: string): boolean => {
+  const [year, month, day] = date.split('-').map(Number);
+  if (month < 1 || month > 12) {
+    return false;
+  }
+  const daysInMonth = new Date(year, month, 0).getDate();
+  return day >= 1 && day <= daysInMonth;
+};
 
+
+
+
+// Delete a transaction
 export const deleteTransaction = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const isHardDelete = req.query.hard === 'true';
 
-  // Check if transaction ID is provided in params
   if (!id) {
     res.status(400).json({ error: 'Missing transaction ID.' });
     return;
   }
 
   try {
-    // Check if hard delete or soft delete is requested
     if (isHardDelete) {
-      // Hard delete
       await prisma.transaction.delete({ where: { id: parseInt(id) } });
     } else {
-      // Soft delete
       await prisma.transaction.update({
         where: { id: parseInt(id) },
         data: { deletedAt: new Date() },
       });
     }
 
-    // Send successful response
     res.status(204).send();
   } catch (err) {
     if (err instanceof Error) {
-      // Handle known errors
       res.status(500).json({ error: 'Failed to delete transaction.', details: err.message });
     } else {
-      // Handle unexpected errors
       res.status(500).json({ error: 'An unexpected error occurred.' });
     }
   }
 };
+
+

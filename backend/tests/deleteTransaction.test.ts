@@ -1,4 +1,5 @@
 
+
 import { deleteTransaction } from '../src/services/transactionService';
 import prisma from '../src/prisma/client';
 import { Request, Response } from 'express';
@@ -23,7 +24,14 @@ describe('deleteTransaction', () => {
     req.query = { hard: 'false' };  // Soft delete flag
     (prisma.transaction.update as jest.Mock).mockResolvedValue({});
 
-    await deleteTransaction(req as Request, res as Response);
+    await deleteTransaction(req as Request, res as Response);    // TODO: Verify that the transaction is deleted- completed
+
+    // Verify that the update method is called for soft delete
+    // Now expecting `deletedAt` instead of `deleted`
+    expect(prisma.transaction.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { deletedAt: expect.any(Date) },  // Expecting a timestamp for soft delete
+    });
 
     expect(res.status).toHaveBeenCalledWith(204);
     expect(res.send).toHaveBeenCalled();
@@ -35,6 +43,11 @@ describe('deleteTransaction', () => {
     (prisma.transaction.delete as jest.Mock).mockResolvedValue({});
 
     await deleteTransaction(req as Request, res as Response);
+
+    // Verify that the delete method is called for hard delete
+    expect(prisma.transaction.delete).toHaveBeenCalledWith({
+      where: { id: 1 },
+    });
 
     expect(res.status).toHaveBeenCalledWith(204);
     expect(res.send).toHaveBeenCalled();
@@ -55,6 +68,13 @@ describe('deleteTransaction', () => {
     (prisma.transaction.update as jest.Mock).mockResolvedValue({});
 
     await deleteTransaction(req as Request, res as Response);
+
+    // Verify that the update method is called for soft delete
+    // Expecting `deletedAt` to be set for soft delete
+    expect(prisma.transaction.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { deletedAt: expect.any(Date) }, // Expecting a timestamp for soft delete
+    });
 
     expect(res.status).toHaveBeenCalledWith(204);
     expect(res.send).toHaveBeenCalled();

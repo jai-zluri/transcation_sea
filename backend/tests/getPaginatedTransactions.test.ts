@@ -15,14 +15,27 @@ describe('getPaginatedTransactions', () => {
     };
   });
 
+
   it('should fetch paginated transactions', async () => {
+    // Mock query parameters
     req.query = { page: '1', limit: '2' };
-    (prisma.transaction.findMany as jest.Mock).mockResolvedValue([{ id: 1 }, { id: 2 }]);
+
+    // Mock database response
+    const mockTransactions = [
+      { id: 1, description: 'Transaction 1', amount: 100, date: '2025-01-10', currency: 'USD' },
+      { id: 2, description: 'Transaction 2', amount: 200, date: '2025-01-11', currency: 'USD' },
+    ];
+    (prisma.transaction.findMany as jest.Mock).mockResolvedValue(mockTransactions);
     (prisma.transaction.count as jest.Mock).mockResolvedValue(5);
 
+    // Call the service
     await getPaginatedTransactions(req as Request, res as Response);
 
-    expect(res.json).toHaveBeenCalledWith({ transactions: [{ id: 1 }, { id: 2 }], totalCount: 5 });
+    // Assertions
+    expect(res.json).toHaveBeenCalledWith({
+      transactions: mockTransactions, // Returning detailed transactions instead of just IDs
+      totalCount: 5,
+    });
   });
 
   it('should handle errors while fetching paginated transactions', async () => {
