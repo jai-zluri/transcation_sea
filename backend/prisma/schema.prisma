@@ -15,7 +15,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
+
+
 // Define the model for transactions
+
  
 model Transaction {
   id          Int       @id @default(autoincrement())
