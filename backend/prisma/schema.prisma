@@ -3,10 +3,12 @@
 
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native"]
+  engineType = "binary"
 }
+
 
 datasource db {
   provider = "postgresql"
@@ -14,26 +16,18 @@ datasource db {
 }
 
 // Define the model for transactions
+ 
 model Transaction {
   id          Int       @id @default(autoincrement())
   date        DateTime  @map("transaction_date")
   description String
-  amount      Float
-  currency    String?   // Ensure this line exists for currency
+  amount      Decimal   @map("amount") // Change to Decimal while keeping the column name
+  currency    String?   // Optional field for currency
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?  // Nullable field for soft delete
+  deletedAt   DateTime? // Nullable field for soft delete
 
-  @@unique([date, description]) // Ensure no duplicate transactions with the same date and description
-  @@index([date]) // Optimize sorting and filtering by date
+  @@unique([date, description])
+  @@index([date])
 }
-
-// Define the model for CSVFile
-// model CSVFile {
-//   id        Int      @id @default(autoincrement())
-//   name      String
-//   file      Json     // You can store the parsed CSV data as JSON
-//   createdAt DateTime @default(now())
-// }
-
 

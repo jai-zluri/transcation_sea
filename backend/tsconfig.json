@@ -127,7 +127,7 @@
     "typeRoots": ["./node_modules/@types"]
   },
   "include": [
-    "src/**/*",
+    "src/**/*.ts",
     "tests/**/*" // Ensure your test files are included
   ]
 }

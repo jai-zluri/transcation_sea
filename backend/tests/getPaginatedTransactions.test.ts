@@ -1,7 +1,9 @@
 
 import { getPaginatedTransactions } from '../src/services/transactionService';
-import prisma from '../src/prisma/client';
+
 import { Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
 
 describe('getPaginatedTransactions', () => {
   let req: Partial<Request>;

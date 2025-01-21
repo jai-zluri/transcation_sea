@@ -1,0 +1,25 @@
+body {
+    font-family: Arial, sans-serif;
+  }
+  
+  .header {
+    background-color: #b63061;
+    color: rgb(49, 3, 3);
+    padding: 1rem;
+    text-align: center;
+  }
+  
+  .transactions-page {
+    padding: 2rem;
+  }
+  
+  .transaction-form {
+    margin-bottom: 2rem;
+  }
+  
+  .transaction-form input,
+  .transaction-form select,
+  .transaction-form button {
+    margin-right: 1rem;
+  }
+  

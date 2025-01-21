@@ -3,7 +3,7 @@ import request from 'supertest';
 import { app } from '../src/index'; 
 import { server } from '../src/index'; 
 import path from 'path';
-import prisma from '../src/prisma/client';
+//import {prisma} from '../src/prisma/client';
 import fs from 'fs';
 
 describe('File Upload', () => {
