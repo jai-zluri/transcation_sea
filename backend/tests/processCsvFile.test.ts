@@ -4,7 +4,7 @@ import { parseCSV, Transaction } from '../src/utils/csvParserUtils';
 import mockfs from 'mock-fs'; // Default import for mock-fs
 
 import request from 'supertest';
-import { app } from '../src/index';
+import  {app} from '../src/index';
 
 jest.mock('fs'); // Mock the fs module
 jest.mock('csv-parser', () => jest.fn());
