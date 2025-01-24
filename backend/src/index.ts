@@ -24,6 +24,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
+// Define a simple route
+app.get("/", (req, res) => {
+  res.send("Server is running!");
+});
 app.use('/transactions', router);
 
 

@@ -18,6 +18,10 @@ app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 // Routes
+// Define a simple route
+app.get("/", (req, res) => {
+    res.send("Server is running!");
+});
 app.use('/transactions', transactionRoutes_1.default);
 // Start server
 const server = app.listen(PORT, () => {
