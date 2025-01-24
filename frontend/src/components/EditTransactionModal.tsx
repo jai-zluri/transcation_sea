@@ -1,7 +1,9 @@
 
-// EditTransactionModal Component
+
 import React, { useState } from 'react';
 import { Transaction } from '../types';
+import { validation } from '../utils/validation';
+import { currencyUtils } from '../utils/currency';
 
 interface Props {
   transaction: Transaction;
@@ -16,25 +18,64 @@ export const EditTransactionModal: React.FC<Props> = ({
 }) => {
   const [formData, setFormData] = useState({
     ...transaction,
-    date: transaction.date ? transaction.date.split('T')[0] : new Date().toISOString().split('T')[0], // Format date
+    date: transaction.date
+      ? transaction.date.split('T')[0]
+      : new Date().toISOString().split('T')[0], // Format date
   });
+
+  const [errors, setErrors] = useState<string[]>([]);
+
+  const validateTransaction = (): boolean => {
+    const newErrors: string[] = [];
+
+    if (!validation.isValidDate(formData.date)) {
+      newErrors.push('Date must be between 1980 and 2030');
+    }
+
+    if (!validation.isValidAmount(formData.amount)) {
+      newErrors.push('Amount must be greater than 0 and have up to 2 decimal places');
+    }
+
+    if (!validation.isValidDescription(formData.description)) {
+      newErrors.push('Description must contain alphabets');
+    }
+
+    setErrors(newErrors);
+    return newErrors.length === 0;
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
-    setFormData({ ...formData, [e.target.name]: value });
+    const { name, value } = e.target;
+
+    setFormData((prevFormData) => ({
+      ...prevFormData,
+      [name]: name === 'amount' ? parseFloat(value) : value,
+    }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ ...formData, date: new Date(formData.date).toISOString() }); // Ensure ISO format
+    if (validateTransaction()) {
+      onSave({
+        ...formData,
+        date: new Date(formData.date).toISOString(),
+      });
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
       <div className="bg-white p-6 rounded-lg w-full max-w-md">
         <h2 className="text-xl font-semibold mb-4">Edit Transaction</h2>
+        {errors.length > 0 && (
+          <div className="mb-4 p-4 bg-red-100 text-red-800 rounded-md">
+            {errors.map((error, index) => (
+              <div key={index}>{error}</div>
+            ))}
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Date</label>
@@ -44,6 +85,8 @@ export const EditTransactionModal: React.FC<Props> = ({
               value={formData.date}
               onChange={handleChange}
               className="w-full p-2 border rounded-md"
+              min="1980-01-01"
+              max="2030-12-31"
               required
             />
           </div>
@@ -60,9 +103,10 @@ export const EditTransactionModal: React.FC<Props> = ({
           <div>
             <label className="block text-sm font-medium mb-1">Amount</label>
             <input
-              name="amount"
               type="number"
               step="0.01"
+              min="0.01"
+              name="amount"
               value={formData.amount}
               onChange={handleChange}
               className="w-full p-2 border rounded-md"
@@ -73,12 +117,15 @@ export const EditTransactionModal: React.FC<Props> = ({
             <label className="block text-sm font-medium mb-1">Currency</label>
             <select
               name="currency"
-              value={formData.currency || 'USD'}
+              value={formData.currency}
               onChange={handleChange}
               className="w-full p-2 border rounded-md"
             >
-              <option value="USD">USD</option>
-              <option value="INR">INR</option>
+              {currencyUtils.currencies.map((currency) => (
+                <option key={currency.code} value={currency.code}>
+                  {currency.code} ({currency.symbol})
+                </option>
+              ))}
             </select>
           </div>
           <div className="flex justify-end gap-2">
