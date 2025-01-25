@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, AlertCircle, Check, Loader2 } from 'lucide-react';
 import { TransactionTable } from './components/TransactionTable';
-import { Pagination } from './components/Pagination';
 import { AddTransactionModal } from './components/AddTransactionModal';
 import RestoreTable from './components/restoreTable';
 
 import { transactionService } from './services/api';
-import { Transaction, UploadStatus } from './types';
+import { Transaction, UploadStatus } from './types/index';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginPage } from './components/LoginPage';
 import './index.css';
+import { csvHandler } from './utils/csvHandler';
 
 function AppContent() {
   const { user, logout } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [restoreTransactions, setRestoreTransactions] = useState<Transaction[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [globalSeen, setGlobalSeen] = useState<Set<string>>(new Set<string>());
   const [totalPages, setTotalPages] = useState(1);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>(null);
   const [isAddingTransaction, setIsAddingTransaction] = useState(false);
@@ -27,24 +28,25 @@ function AppContent() {
 
   const fetchTransactions = async () => {
     try {
-      const data = await transactionService.getPaginatedTransactions(currentPage, pageSize);
-      const sortedTransactions = data.transactions.sort(
+      // Fetch all transactions instead of paginated data
+      const data = await transactionService.getAllTransactions();
+      const sortedTransactions = data.sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       );
-      setTransactions(sortedTransactions);
-      setTotalPages(data.totalPages);
+      setTransactions(sortedTransactions); // Set all transactions directly
     } catch (error) {
       console.error('Error fetching transactions:', error);
     }
   };
-
+  
   useEffect(() => {
     fetchTransactions();
-  }, [currentPage, pageSize]);
-
+  }, []); // No dependency on currentPage or pageSize anymore
+  
   const handleRestoreToggle = () => {
     setIsRestoreVisible(!isRestoreVisible);
   };
+  
 
   const checkDuplicate = (newTransaction: Omit<Transaction, 'id'>): boolean => {
     return transactions.some(t =>
@@ -54,39 +56,84 @@ function AppContent() {
     );
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
 
-    if (!file.name.endsWith('.csv')) {
-      alert('Please upload a CSV file');
+
+
+const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  if (!file.name.endsWith('.csv')) {
+    alert('Please upload a CSV file');
+    return;
+  }
+
+  setUploadStatus('uploading');
+  try {
+    // Step 1: Log the raw file content
+    const fileContent = await file.text();
+    console.log("Raw File Content: ", fileContent); // Debugging: File content as plain text
+    
+    if (!fileContent.trim()) {
+      throw new Error('The file is empty or invalid.');
+    }
+
+    // Step 2: Parse the CSV content
+    const { validTransactions, duplicates, errors } = csvHandler.parseCSV(fileContent, globalSeen);
+
+    // Debugging: Log parsed data
+    console.log("Parsed Valid Transactions: ", validTransactions);
+    console.log("Parsed Duplicate Transactions: ", duplicates);
+    console.log("Parsing Errors: ", errors);
+
+    // Step 3: Check conditions if necessary (Example: print before checking validation)
+    if (validTransactions.length > 0) {
+      console.log("Before Validation - Valid Transactions: ", validTransactions);
+    }
+    
+    if (duplicates.length > 0) {
+      console.log("Before Validation - Duplicates: ", duplicates);
+    }
+
+    // Handling errors and duplicates
+    if (duplicates.length > 0) {
+      setDuplicateWarning(`Found ${duplicates.length} duplicate transactions`);
+    }
+
+    if (errors.length > 0) {
+      alert(`Errors:\n${errors.join('\n')}`);
+      setUploadStatus('error');
       return;
     }
 
-    setUploadStatus('uploading');
-    try {
-      const response = await transactionService.uploadCSV(file);
+    // Update the global seen set with valid transactions
+    setGlobalSeen(prevSeen => {
+      const updatedSeen = new Set(prevSeen);
+      validTransactions.forEach(transaction => {
+        const transactionKey = `${transaction.date}-${transaction.description}-${transaction.amount}-${transaction.currency}`;
+        updatedSeen.add(transactionKey);
+      });
+      return updatedSeen;
+    });
 
-      if (response.duplicates && response.duplicates.length > 0) {
-        setDuplicateWarning(`Found ${response.duplicates.length} duplicate transactions`);
-      }
+    // Uploading the CSV (send to backend)
+    const response = await transactionService.uploadCSV(file);
+    console.log('Uploaded Data Response:', response);
 
-      setUploadStatus('success');
-      fetchTransactions();
+    // Adding valid transactions to the state
+    setTransactions(prev => [...prev, ...validTransactions]);
+    setUploadStatus('success');
+  } catch (error: any) {
+    setUploadStatus('error');
+    console.error('Error uploading file:', error.message);
+    alert(`Error: ${error.message}`);
+  } finally {
+    setTimeout(() => setUploadStatus(null), 2000);
+  }
+};
 
-      setTimeout(() => {
-        setUploadStatus(null);
-        setDuplicateWarning(null);
-      }, 2000);
-    } catch (error) {
-      setUploadStatus('error');
-      console.error('Error uploading file:', error);
 
-      setTimeout(() => {
-        setUploadStatus(null);
-      }, 2000);
-    }
-  };
+
 
   const handleDeleteTransaction = async (id: number) => {
     const transactionToDelete = transactions.find(t => t.id === id);
@@ -116,15 +163,46 @@ function AppContent() {
     setRestoreTransactions(prev => prev.filter(t => t.id !== id));
   };
 
-  const handleEditTransaction = async (transaction: Transaction) => {
-    if (transaction.id === undefined) return;
+
+  // const handleEditTransaction = async (updatedTransaction: Transaction) => {
+  //   try {
+  //     // Call the API to update the transaction
+  //     await transactionService.updateTransaction(updatedTransaction.id!, updatedTransaction);
+  //     fetchTransactions();
+  
+  //     // Update the local transactions state
+  //     setTransactions((prevTransactions) =>
+  //       prevTransactions.map((transaction) =>
+  //         transaction.id === updatedTransaction.id ? updatedTransaction : transaction
+  //       )
+  //     );
+  
+  //     // Show success notification
+  //     //showNotification('Transaction updated successfully!', 'success');
+  //   } catch (error) {
+  //     console.error('Failed to update transaction:', error);
+  //    // showNotification('Failed to update transaction. Please try again.', 'error');
+  //   }
+  // };
+  const handleEditTransaction = async (updatedTransaction: Transaction) => {
     try {
-      await transactionService.updateTransaction(transaction.id, transaction);
-      fetchTransactions();
+      console.log('Updating transaction:', updatedTransaction);
+    
+      // Call the API and log full response
+      const response = await transactionService.updateTransaction(updatedTransaction.id!, updatedTransaction);
+      console.log('API Update Response:', response);
+    
+      // Force complete refresh of transactions
+      await fetchTransactions();
+    
+      console.log('Transaction updated successfully.');
     } catch (error) {
-      console.error('Error updating transaction:', error);
+      console.error('Failed to update transaction:', error);
     }
   };
+  
+
+  
 
   const handleAddTransaction = async (transactionData: Omit<Transaction, 'id'>) => {
     if (checkDuplicate(transactionData)) {

@@ -258,7 +258,7 @@ import { Transaction, PaginatedResponse, ApiResponse } from '../types';
 //const API_URL = 'http://localhost:5000';
 //const API_URL = 'https://transcation-valley.onrender.com'; // Update to Render URL
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000'; // Fallback to localhost for local development
+const API_URL = 'http://localhost:5000'; // Fallback to localhost for local development
 
 
 
@@ -270,33 +270,17 @@ const api: AxiosInstance = axios.create({
 });
 
 export const transactionService = {
-  getPaginatedTransactions: async (
-    page = 1,
-    limit = 25
-  ): Promise<PaginatedResponse<Transaction>> => {
-    try {
-      const response = await api.get<PaginatedResponse<Transaction>>(
-        `/transactions/transactions/paginated`,
-        {
-          params: { page, limit },
-        }
-      );
-      return response.data;
-    } catch (error: any) {
-      console.error('Error fetching paginated transactions:', error);
-      throw error;
-    }
-  },
-
   getAllTransactions: async (): Promise<Transaction[]> => {
     try {
-      const response = await api.get<Transaction[]>(`/transactions/transactions`);
+      const response = await api.get<Transaction[]>('/transactions/transactions');
       return response.data;
     } catch (error: any) {
       console.error('Error fetching all transactions:', error);
       throw error;
     }
   },
+
+
 
   addTransaction: async (transactionData: Omit<Transaction, 'id'>): Promise<ApiResponse> => {
     try {
@@ -317,20 +301,11 @@ export const transactionService = {
     }
   },
 
-  updateTransaction: async (
-    id: number,
-    transactionData: Partial<Transaction>
-  ): Promise<ApiResponse> => {
+  updateTransaction: async (id: number, transactionData: Partial<Transaction>): Promise<ApiResponse> => {
     try {
       const response = await api.put<ApiResponse>(
         `/transactions/transactions/${id}`,
-        {
-          ...transactionData,
-          amountInINR: currencyUtils.convertToINR(
-            transactionData.amount!,
-            transactionData.currency!
-          )
-        }
+        transactionData
       );
       return response.data;
     } catch (error: any) {
@@ -351,17 +326,35 @@ export const transactionService = {
     }
   },
 
+  // uploadCSV: async (file: File): Promise<ApiResponse> => {
+  //   try {
+  //     const formData = new FormData();
+  //     formData.append('file', file);
+      
+  //     const response = await api.post<ApiResponse>('/transactions/upload', formData, {
+  //       headers: {
+  //         'Content-Type': 'multipart/form-data',
+  //       },
+  //     });
+      
+  //     return response.data;
+  //   } catch (error: any) {
+  //     console.error('Error uploading CSV:', error);
+  //     throw error;
+  //   }
+  // },
+
   uploadCSV: async (file: File): Promise<ApiResponse> => {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       const response = await api.post<ApiResponse>('/transactions/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
-      
+
       return response.data;
     } catch (error: any) {
       console.error('Error uploading CSV:', error);

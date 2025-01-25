@@ -46,33 +46,3 @@ export const formatters = {
 };
 
 
-
-// //utils/formatters.ts
-// export const formatters = {
-//     formatDate: (dateString: string): string => {
-//       const date = new Date(dateString);
-//       return date.toLocaleDateString('en-US', {
-//         year: 'numeric',
-//         month: 'short',
-//         day: 'numeric'
-//       });
-//     },
-  
-//     formatCurrency: (amount: number, currency: string): string => {
-//       const formatter = new Intl.NumberFormat('en-US', {
-//         style: 'currency',
-//         currency: currency,
-//         minimumFractionDigits: 2,
-//         maximumFractionDigits: 2
-//       });
-//       return formatter.format(amount);
-//     },
-  
-//     formatFileSize: (bytes: number): string => {
-//       if (bytes === 0) return '0 Bytes';
-//       const k = 1024;
-//       const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-//       const i = Math.floor(Math.log(bytes) / Math.log(k));
-//       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-//     }
-//   };
