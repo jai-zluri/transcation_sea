@@ -255,11 +255,7 @@ import { formatters } from '../utils/formatters';
 import { currencyUtils } from '../utils/currency';
 import { Transaction, PaginatedResponse, ApiResponse } from '../types';
 
-//const API_URL = 'http://localhost:5000';
-//const API_URL = 'https://transcation-valley.onrender.com'; // Update to Render URL
-
-const API_URL = 'http://localhost:5000'; // Fallback to localhost for local development
-
+const API_URL = 'https://transcation-valley.onrender.com' ; 
 
 
 const api: AxiosInstance = axios.create({
