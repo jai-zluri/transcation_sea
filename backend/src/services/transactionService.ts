@@ -729,7 +729,9 @@ export const updateTransaction = async (req: Request, res: Response): Promise<vo
 
 
 // Delete a transaction
-export const deleteTransaction = async (req: Request, res: Response): Promise<void> => {
+export const 
+
+deleteTransaction = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const isHardDelete = req.query.hard === 'true';
 

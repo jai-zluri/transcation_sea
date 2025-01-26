@@ -2,7 +2,6 @@
 
 
 
-
 import React, { useState } from 'react';
 import { Transaction } from '../types';
 import { formatters } from '../utils/formatters';
@@ -88,8 +87,6 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     setDeleteConfirmationTransactionId(null);
   };
 
-  
-    
   const handleEditTransaction = async (updatedTransaction: Transaction) => {
     await onEdit(updatedTransaction);
     setEditingTransaction(null);
@@ -284,14 +281,14 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                         <button
                           onClick={handlePreviousPage}
                           disabled={currentPage === 1}
-                          className="px-4 py-2 bg-gray-300 rounded-md disabled:bg-gray-400"
+                          className="px-4 py-2 bg-red-300 rounded-md disabled:bg-gray-400"
                         >
                           Previous
                         </button>
                         <button
                           onClick={handleNextPage}
                           disabled={currentPage === totalPages}
-                          className="px-4 py-2 bg-gray-300 rounded-md disabled:bg-gray-400"
+                          className="px-4 py-2 bg-red-300 rounded-md disabled:bg-gray-400"
                         >
                           Next
                         </button>

@@ -1,21 +1,35 @@
 
 
+
 import React from 'react';
 import { Transaction } from '../types';
 import { RotateCw, XCircle } from 'lucide-react';
+import { currencyUtils } from '../utils/currency'; // Make sure to import your currency utility
 
 interface RestoreTableProps {
   restoreTransactions: Transaction[];
   onUndo: (id: number) => Promise<void>;
+  onRestoreAll: () => void;
   onDeletePermanently: (id: number) => Promise<void>;
-  onClose: () => void; // Added onClose prop
+  onClose: () => void;
+  currentPage: number;
+  totalPages: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
 }
 
 const RestoreTable: React.FC<RestoreTableProps> = ({
   restoreTransactions,
   onUndo,
+  onRestoreAll,
   onDeletePermanently,
-  onClose, // Destructure the onClose prop
+  onClose,
+  currentPage,
+  totalPages,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
 }) => {
   const handleDeletePermanently = (id: number) => {
     if (
@@ -27,36 +41,22 @@ const RestoreTable: React.FC<RestoreTableProps> = ({
     }
   };
 
-  const handleDeleteAllPermanently = async () => {
-    if (
-      window.confirm(
-        'Are you sure you want to delete all the transactions permanently?'
-      )
-    ) {
-      // Delete each transaction one by one
-      for (const transaction of restoreTransactions) {
-        await onDeletePermanently(transaction.id!);
-      }
-    }
-  };
-
   return (
-   
     <div className="mt-8">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Restore Table</h2>
         {restoreTransactions.length > 0 && (
-        <div className="flex justify-end mt-4">
-          <button
-            onClick={handleDeleteAllPermanently}
-            className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors duration-200"
-          >
-            Delete All Permanently
-          </button>
-        </div>
-      )}
+          <div className="flex justify-end mt-4">
+            <button
+              onClick={onRestoreAll}
+              className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200"
+            >
+              Restore All
+            </button>
+          </div>
+        )}
         <button
-          onClick={onClose} // Trigger onClose when the button is clicked
+          onClick={onClose}
           className="text-red-600 hover:text-red-800 flex items-center gap-1"
         >
           <XCircle size={20} /> Close
@@ -83,10 +83,10 @@ const RestoreTable: React.FC<RestoreTableProps> = ({
                   {transaction.description}
                 </td>
                 <td className="px-6 py-4 text-right">
-                  {transaction.amount} {transaction.currency}
+                  {`${currencyUtils.getSymbol(transaction.currency)}${transaction.amount}`}
                 </td>
                 <td className="px-6 py-4 text-right">
-                  {transaction.amountInINR || 0} INR
+                  {`${currencyUtils.getSymbol('INR')}${currencyUtils.convertToINR(transaction.amount, transaction.currency)}`}
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex justify-end gap-2">
@@ -110,16 +110,41 @@ const RestoreTable: React.FC<RestoreTableProps> = ({
         </table>
       </div>
 
-      {/* {restoreTransactions.length > 0 && (
-        <div className="flex justify-end mt-4">
-          <button
-            onClick={handleDeleteAllPermanently}
-            className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors duration-200"
+      <div className="flex justify-between items-center mt-4">
+        <div className="flex items-center gap-4">
+          <select
+            value={pageSize}
+            onChange={(e) => onPageSizeChange(parseInt(e.target.value, 10))}
+            className="px-4 py-2 border rounded-md"
           >
-            Delete All Permanently
+            {[5, 10, 15, 20, 25].map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+          <span className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages}
+          </span>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-4 py-2 bg-gray-300 rounded-md disabled:bg-gray-400"
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 bg-gray-300 rounded-md disabled:bg-gray-400"
+          >
+            Next
           </button>
         </div>
-      )} */}
+      </div>
     </div>
   );
 };

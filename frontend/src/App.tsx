@@ -16,124 +16,82 @@ function AppContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [restoreTransactions, setRestoreTransactions] = useState<Transaction[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [restoreCurrentPage, setRestoreCurrentPage] = useState(1);
   const [globalSeen, setGlobalSeen] = useState<Set<string>>(new Set<string>());
   const [totalPages, setTotalPages] = useState(1);
+  const [restoreTotalPages, setRestoreTotalPages] = useState(1);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>(null);
   const [isAddingTransaction, setIsAddingTransaction] = useState(false);
   const [isRestoreVisible, setIsRestoreVisible] = useState(false);
   const [selectedTransactions, setSelectedTransactions] = useState<number[]>([]);
   const [pageSize, setPageSize] = useState(25);
+  const [restorePageSize, setRestorePageSize] = useState(25);
   const [deletedTransaction, setDeletedTransaction] = useState<Transaction | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
   const fetchTransactions = async () => {
     try {
-      // Fetch all transactions instead of paginated data
       const data = await transactionService.getAllTransactions();
       const sortedTransactions = data.sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       );
-      setTransactions(sortedTransactions); // Set all transactions directly
+      setTransactions(sortedTransactions);
+      setTotalPages(Math.ceil(sortedTransactions.length / pageSize));
     } catch (error) {
       console.error('Error fetching transactions:', error);
     }
   };
-  
+
   useEffect(() => {
     fetchTransactions();
-  }, []); // No dependency on currentPage or pageSize anymore
-  
+  }, []);
+
+  useEffect(() => {
+    setTotalPages(Math.ceil(transactions.length / pageSize));
+  }, [transactions, pageSize]);
+
+  useEffect(() => {
+    setRestoreTotalPages(Math.ceil(restoreTransactions.length / restorePageSize));
+  }, [restoreTransactions, restorePageSize]);
+
   const handleRestoreToggle = () => {
     setIsRestoreVisible(!isRestoreVisible);
   };
-  
 
-  const checkDuplicate = (newTransaction: Omit<Transaction, 'id'>): boolean => {
-    return transactions.some(t =>
-      t.date === newTransaction.date &&
-      t.amount === newTransaction.amount &&
-      t.description === newTransaction.description
-    );
-  };
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-
-
-
-const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-  const file = event.target.files?.[0];
-  if (!file) return;
-
-  if (!file.name.endsWith('.csv')) {
-    alert('Please upload a CSV file');
-    return;
-  }
-
-  setUploadStatus('uploading');
-  try {
-    // Step 1: Log the raw file content
-    const fileContent = await file.text();
-    console.log("Raw File Content: ", fileContent); // Debugging: File content as plain text
-    
-    if (!fileContent.trim()) {
-      throw new Error('The file is empty or invalid.');
-    }
-
-    // Step 2: Parse the CSV content
-    const { validTransactions, duplicates, errors } = csvHandler.parseCSV(fileContent, globalSeen);
-
-    // Debugging: Log parsed data
-    console.log("Parsed Valid Transactions: ", validTransactions);
-    console.log("Parsed Duplicate Transactions: ", duplicates);
-    console.log("Parsing Errors: ", errors);
-
-    // Step 3: Check conditions if necessary (Example: print before checking validation)
-    if (validTransactions.length > 0) {
-      console.log("Before Validation - Valid Transactions: ", validTransactions);
-    }
-    
-    if (duplicates.length > 0) {
-      console.log("Before Validation - Duplicates: ", duplicates);
-    }
-
-    // Handling errors and duplicates
-    if (duplicates.length > 0) {
-      setDuplicateWarning(`Found ${duplicates.length} duplicate transactions`);
-    }
-
-    if (errors.length > 0) {
-      alert(`Errors:\n${errors.join('\n')}`);
-      setUploadStatus('error');
+    if (!file.name.endsWith('.csv')) {
+      alert('Please upload a CSV file');
       return;
     }
 
-    // Update the global seen set with valid transactions
-    setGlobalSeen(prevSeen => {
-      const updatedSeen = new Set(prevSeen);
-      validTransactions.forEach(transaction => {
-        const transactionKey = `${transaction.date}-${transaction.description}-${transaction.amount}-${transaction.currency}`;
-        updatedSeen.add(transactionKey);
-      });
-      return updatedSeen;
-    });
+    setUploadStatus('uploading');
+    try {
+      const fileContent = await file.text();
+      if (!fileContent.trim()) {
+        throw new Error('The file is empty or invalid.');
+      }
 
-    // Uploading the CSV (send to backend)
-    const response = await transactionService.uploadCSV(file);
-    console.log('Uploaded Data Response:', response);
+      const { validTransactions, errors } = csvHandler.parseCSV(fileContent);
 
-    // Adding valid transactions to the state
-    setTransactions(prev => [...prev, ...validTransactions]);
-    setUploadStatus('success');
-  } catch (error: any) {
-    setUploadStatus('error');
-    console.error('Error uploading file:', error.message);
-    alert(`Error: ${error.message}`);
-  } finally {
-    setTimeout(() => setUploadStatus(null), 2000);
-  }
-};
+      if (errors.length > 0) {
+        alert(`Errors:\n${errors.join('\n')}`);
+        setUploadStatus('error');
+        return;
+      }
 
-
-
+      setTransactions(prev => [...prev, ...validTransactions]);
+      setUploadStatus('success');
+    } catch (error: any) {
+      setUploadStatus('error');
+      console.error('Error uploading file:', error.message);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setTimeout(() => setUploadStatus(null), 2000);
+    }
+  };
 
   const handleDeleteTransaction = async (id: number) => {
     const transactionToDelete = transactions.find(t => t.id === id);
@@ -158,57 +116,34 @@ const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     }
   };
 
+  const handleRestoreAll = async () => {
+    for (const transaction of restoreTransactions) {
+      setTransactions(prev => [...prev, transaction]);
+    }
+    setRestoreTransactions([]);
+  };
+
   const handleDeletePermanently = async (id: number) => {
     await transactionService.deleteTransaction(id);
     setRestoreTransactions(prev => prev.filter(t => t.id !== id));
   };
 
-
-  // const handleEditTransaction = async (updatedTransaction: Transaction) => {
-  //   try {
-  //     // Call the API to update the transaction
-  //     await transactionService.updateTransaction(updatedTransaction.id!, updatedTransaction);
-  //     fetchTransactions();
-  
-  //     // Update the local transactions state
-  //     setTransactions((prevTransactions) =>
-  //       prevTransactions.map((transaction) =>
-  //         transaction.id === updatedTransaction.id ? updatedTransaction : transaction
-  //       )
-  //     );
-  
-  //     // Show success notification
-  //     //showNotification('Transaction updated successfully!', 'success');
-  //   } catch (error) {
-  //     console.error('Failed to update transaction:', error);
-  //    // showNotification('Failed to update transaction. Please try again.', 'error');
-  //   }
-  // };
   const handleEditTransaction = async (updatedTransaction: Transaction) => {
     try {
       console.log('Updating transaction:', updatedTransaction);
-    
-      // Call the API and log full response
+
       const response = await transactionService.updateTransaction(updatedTransaction.id!, updatedTransaction);
       console.log('API Update Response:', response);
-    
-      // Force complete refresh of transactions
+
       await fetchTransactions();
-    
+
       console.log('Transaction updated successfully.');
     } catch (error) {
       console.error('Failed to update transaction:', error);
     }
   };
-  
-
-  
 
   const handleAddTransaction = async (transactionData: Omit<Transaction, 'id'>) => {
-    if (checkDuplicate(transactionData)) {
-      alert('Duplicate transaction detected');
-      return;
-    }
     try {
       await transactionService.addTransaction(transactionData);
       setIsAddingTransaction(false);
@@ -219,16 +154,25 @@ const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
   };
 
   const handleAdd = async (newTransaction: Transaction) => {
-    // Add logic for adding new transaction if necessary
   };
 
   const handleTransactionsView = () => {
-    setIsRestoreVisible(false); // Hide restore table and show transactions
+    setIsRestoreVisible(false);
   };
 
   if (!user) {
     return <LoginPage />;
   }
+
+  const paginatedTransactions = transactions.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  const paginatedRestoreTransactions = restoreTransactions.slice(
+    (restoreCurrentPage - 1) * restorePageSize,
+    restoreCurrentPage * restorePageSize
+  );
 
   return (
     <div className="min-h-screen bg-black">
@@ -319,23 +263,23 @@ const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
           </div>
         )}
 
-        {duplicateWarning && (
-          <div className="mb-4 p-4 bg-yellow-100 text-yellow-800 rounded-md">
-            <span>{duplicateWarning}</span>
-          </div>
-        )}
-
         <div className="bg-white rounded-lg shadow">
           {isRestoreVisible ? (
             <RestoreTable
-              restoreTransactions={restoreTransactions}
+              restoreTransactions={paginatedRestoreTransactions}
               onUndo={handleUndoTransaction}
+              onRestoreAll={handleRestoreAll}
               onDeletePermanently={handleDeletePermanently}
               onClose={() => setIsRestoreVisible(false)}
+              currentPage={restoreCurrentPage}
+              totalPages={restoreTotalPages}
+              pageSize={restorePageSize}
+              onPageChange={setRestoreCurrentPage}
+              onPageSizeChange={setRestorePageSize}
             />
           ) : (
             <TransactionTable
-              transactions={transactions}
+              transactions={paginatedTransactions}
               onDelete={handleDeleteTransaction}
               onBulkDelete={handleBulkDelete}
               onAdd={handleAdd}
@@ -354,7 +298,6 @@ const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
             <AddTransactionModal
               onClose={() => setIsAddingTransaction(false)}
               onSave={handleAddTransaction}
-              checkDuplicate={checkDuplicate}
               existingTransactions={transactions}
             />
           )}
@@ -373,4 +316,3 @@ function App() {
 }
 
 export default App;
-
