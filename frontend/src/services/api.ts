@@ -1,15 +1,13 @@
 
 
-
-
 // services/api.ts
 
 import axios, { AxiosInstance } from 'axios';
-import { formatters } from '../utils/formatters';
 import { currencyUtils } from '../utils/currency';
-import { Transaction, PaginatedResponse, ApiResponse } from '../types';
+import { Transaction, ApiResponse } from '../types';
 
-const API_URL = 'https://transcation-valley.onrender.com' ; 
+
+const API_URL = 'https://transcation-valley.onrender.com';
 
 
 const api: AxiosInstance = axios.create({
@@ -29,8 +27,6 @@ export const transactionService = {
       throw error;
     }
   },
-
-
 
   addTransaction: async (transactionData: Omit<Transaction, 'id'>): Promise<ApiResponse> => {
     try {
@@ -64,35 +60,16 @@ export const transactionService = {
     }
   },
 
-  deleteTransaction: async (id: number): Promise<ApiResponse> => {
+  deleteTransaction: async (id: number, hardDelete: boolean = false): Promise<void> => {
     try {
-      const response = await api.delete<ApiResponse>(
-        `/transactions/transactions/${id}`
-      );
-      return response.data;
+      await api.delete(`/transactions/transactions/${id}`, {
+        params: { hard: hardDelete.toString() },
+      });
     } catch (error: any) {
       console.error('Error deleting transaction:', error);
       throw error;
     }
   },
-
-  // uploadCSV: async (file: File): Promise<ApiResponse> => {
-  //   try {
-  //     const formData = new FormData();
-  //     formData.append('file', file);
-      
-  //     const response = await api.post<ApiResponse>('/transactions/upload', formData, {
-  //       headers: {
-  //         'Content-Type': 'multipart/form-data',
-  //       },
-  //     });
-      
-  //     return response.data;
-  //   } catch (error: any) {
-  //     console.error('Error uploading CSV:', error);
-  //     throw error;
-  //   }
-  // },
 
   uploadCSV: async (file: File): Promise<ApiResponse> => {
     try {
@@ -111,26 +88,4 @@ export const transactionService = {
       throw error;
     }
   },
-
-  downloadDuplicates: async (duplicates: Transaction[]): Promise<void> => {
-    const csv = [
-      ['Date', 'Description', 'Amount', 'Currency', 'Amount in INR'].join(','),
-      ...duplicates.map(t => [
-        formatters.formatDate(t.date),
-        `"${t.description}"`,
-        t.amount,
-        t.currency,
-        currencyUtils.convertToINR(t.amount, t.currency)
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'duplicate-transactions.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
 };

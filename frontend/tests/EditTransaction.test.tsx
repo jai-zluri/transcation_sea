@@ -1,23 +1,14 @@
 import React from 'react';
-import { render, fireEvent, screen, waitFor } from '@testing-library/react';
-import { AddTransactionModal } from '../src/components/AddTransactionModal';
-
-import { Transaction } from '../src/types/index';
-
-
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/extend-expect';
-
-
+import { EditTransactionModal } from '../src/components/EditTransactionModal';
+import { Transaction } from '../src/types/index';
 import { validation } from '../src/utils/validation';
 import { currencyUtils } from '../src/utils/currency';
 
 jest.mock('../src/utils/validation');
 jest.mock('../src/utils/currency');
 
-const mockCurrencies = [
-  { code: 'USD', symbol: '$' },
-  { code: 'EUR', symbol: '€' },
-];
 
 const mockTransaction: Transaction = {
   id: 1,
@@ -27,6 +18,11 @@ const mockTransaction: Transaction = {
   currency: 'USD',
 };
 
+const mockCurrencies = [
+  { code: 'USD', symbol: '$', name: 'US Dollar' },
+  { code: 'EUR', symbol: '€', name: 'Euro' },
+];
+
 beforeEach(() => {
   (currencyUtils.currencies as unknown as jest.Mock).mockReturnValue(mockCurrencies);
   jest.clearAllMocks();
@@ -34,21 +30,21 @@ beforeEach(() => {
 
 const renderComponent = (props = {}) =>
   render(
-    <AddTransactionModal
+    <EditTransactionModal
+      transaction={mockTransaction}
       onClose={jest.fn()}
       onSave={jest.fn()}
-      existingTransactions={[mockTransaction]}
       {...props}
     />
   );
 
-describe('AddTransactionModal', () => {
+describe('EditTransactionModal', () => {
   test('renders correctly with initial data', () => {
     renderComponent();
 
-    expect(screen.getByLabelText(/date/i)).toHaveValue(new Date().toISOString().split('T')[0]);
-    expect(screen.getByLabelText(/description/i)).toHaveValue('');
-    expect(screen.getByLabelText(/amount/i)).toHaveValue('0');
+    expect(screen.getByLabelText(/date/i)).toHaveValue('2025-01-01');
+    expect(screen.getByLabelText(/description/i)).toHaveValue('Test Transaction');
+    expect(screen.getByLabelText(/amount/i)).toHaveValue('100');
     expect(screen.getByLabelText(/currency/i)).toHaveValue('USD');
   });
 
@@ -89,7 +85,7 @@ describe('AddTransactionModal', () => {
     fireEvent.submit(screen.getByText(/save/i));
 
     await waitFor(() => {
-      expect(screen.getByText(/amount must be greater than 0 and have up to 2 decimal places/i)).toBeInTheDocument();
+      expect(screen.getByText(/amount must be greater than 0/i)).toBeInTheDocument();
     });
   });
 
@@ -105,38 +101,21 @@ describe('AddTransactionModal', () => {
     fireEvent.submit(screen.getByText(/save/i));
 
     await waitFor(() => {
-      expect(screen.getByText(/description must contain alphabets/i)).toBeInTheDocument();
+      expect(screen.getByText(/description must contain characters/i)).toBeInTheDocument();
     });
   });
 
-  test('displays validation errors for duplicate transaction', async () => {
-    (validation.isDuplicateTransaction as jest.Mock).mockReturnValue(true);
-
-    renderComponent();
-
-    fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2025-01-01' } });
-    fireEvent.change(screen.getByLabelText(/description/i), { target: { value: 'Test Transaction' } });
-    fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '100' } });
-
-    fireEvent.submit(screen.getByText(/save/i));
-
-    await waitFor(() => {
-      expect(screen.getByText(/this appears to be a duplicate transaction/i)).toBeInTheDocument();
-    });
-  });
-
-  test('calls onSave with valid transaction data on form submission', async () => {
-    const onSaveMock = jest.fn().mockResolvedValue({});
+  test('calls onSave with updated transaction data on valid form submission', async () => {
+    const onSaveMock = jest.fn();
 
     (validation.isValidDate as jest.Mock).mockReturnValue(true);
     (validation.isValidAmount as jest.Mock).mockReturnValue(true);
     (validation.isValidDescription as jest.Mock).mockReturnValue(true);
-    (validation.isDuplicateTransaction as jest.Mock).mockReturnValue(false);
 
     renderComponent({ onSave: onSaveMock });
 
     fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2025-01-02' } });
-    fireEvent.change(screen.getByLabelText(/description/i), { target: { value: 'New Transaction' } });
+    fireEvent.change(screen.getByLabelText(/description/i), { target: { value: 'Updated Transaction' } });
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '200' } });
     fireEvent.change(screen.getByLabelText(/currency/i), { target: { value: 'EUR' } });
 
@@ -144,8 +123,9 @@ describe('AddTransactionModal', () => {
 
     await waitFor(() => {
       expect(onSaveMock).toHaveBeenCalledWith({
-        date: '2025-01-02',
-        description: 'New Transaction',
+        id: 1,
+        date: '2025-01-02T00:00:00.000Z',
+        description: 'Updated Transaction',
         amount: 200,
         currency: 'EUR',
       });
@@ -165,25 +145,23 @@ describe('AddTransactionModal', () => {
     expect(screen.getByLabelText(/currency/i)).toHaveValue('EUR');
   });
 
-  test('displays error message on save failure', async () => {
-    const onSaveMock = jest.fn().mockRejectedValue(new Error('Failed to save transaction. Please try again.'));
+  test('renders validation errors correctly', async () => {
+    (validation.isValidDate as jest.Mock).mockReturnValue(false);
+    (validation.isValidAmount as jest.Mock).mockReturnValue(false);
+    (validation.isValidDescription as jest.Mock).mockReturnValue(false);
 
-    (validation.isValidDate as jest.Mock).mockReturnValue(true);
-    (validation.isValidAmount as jest.Mock).mockReturnValue(true);
-    (validation.isValidDescription as jest.Mock).mockReturnValue(true);
-    (validation.isDuplicateTransaction as jest.Mock).mockReturnValue(false);
+    renderComponent();
 
-    renderComponent({ onSave: onSaveMock });
-
-    fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2025-01-02' } });
-    fireEvent.change(screen.getByLabelText(/description/i), { target: { value: 'New Transaction' } });
-    fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '200' } });
-    fireEvent.change(screen.getByLabelText(/currency/i), { target: { value: 'EUR' } });
+    fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2025-01-01' } });
+    fireEvent.change(screen.getByLabelText(/description/i), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '-100' } });
 
     fireEvent.submit(screen.getByText(/save/i));
 
     await waitFor(() => {
-      expect(screen.getByText(/failed to save transaction. please try again./i)).toBeInTheDocument();
+      expect(screen.getByText(/date must be between 1980 and 2030/i)).toBeInTheDocument();
+      expect(screen.getByText(/amount must be greater than 0/i)).toBeInTheDocument();
+      expect(screen.getByText(/description must contain characters/i)).toBeInTheDocument();
     });
   });
 });

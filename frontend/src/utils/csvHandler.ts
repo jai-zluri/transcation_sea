@@ -12,28 +12,23 @@ export const csvHandler = {
     if (lines.length < 2) {
       return {
         validTransactions: [],
-        errors: ['CSV must have at least a header and one data row.'],
+        errors: [],
       };
     }
 
     const headers = lines[0].split(',').map(h => h.trim());
     const validTransactions: Omit<Transaction, 'id'>[] = [];
-    const errors: string[] = [];
 
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
 
       const values = line.split(',').map(v => v.trim());
-      if (values.length !== headers.length) {
-        errors.push(`Row ${i + 1}: Column count does not match headers.`);
-        continue;
-      }
 
       const transaction = {
         date: values[headers.indexOf('date')] || '',
         description: values[headers.indexOf('description')] || '',
-        amount: parseFloat(values[headers.indexOf('amount')]) || NaN,
+        amount: parseFloat(values[headers.indexOf('amount')]) || 0,
         currency: values[headers.indexOf('currency')] || 'USD',
       };
 
@@ -43,6 +38,6 @@ export const csvHandler = {
       });
     }
 
-    return { validTransactions, errors };
+    return { validTransactions, errors: [] };
   },
 };

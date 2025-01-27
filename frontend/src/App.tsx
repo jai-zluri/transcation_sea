@@ -70,17 +70,10 @@ function AppContent() {
     setUploadStatus('uploading');
     try {
       const fileContent = await file.text();
-      if (!fileContent.trim()) {
-        throw new Error('The file is empty or invalid.');
-      }
-
-      const { validTransactions, errors } = csvHandler.parseCSV(fileContent);
-
-      if (errors.length > 0) {
-        alert(`Errors:\n${errors.join('\n')}`);
-        setUploadStatus('error');
-        return;
-      }
+      const { validTransactions } = csvHandler.parseCSV(fileContent);
+      
+      // Send parsed data to backend
+      await transactionService.uploadCSV(file);
 
       setTransactions(prev => [...prev, ...validTransactions]);
       setUploadStatus('success');

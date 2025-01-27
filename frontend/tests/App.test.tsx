@@ -1,638 +1,259 @@
-// import React from "react";
-// import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-// import App from "../src/App";
-// import { AuthProvider } from "../src/context/AuthContext";
 
-// global.fetch = jest.fn();
 
-// beforeEach(() => {
-//   jest.clearAllMocks();
-// });
 
-// describe("App Component - Comprehensive Tests", () => {
-//   const mockFetch = (response , ok = true) => {
-//    (fetch as jest.Mock).mockResolvedValueOnce({
-//       ok: true,
-//       json: async (): Promise<{ transactions: any[]; totalPages: number }> => ({
-//         transactions: [],
-//         totalPages: 1,
-//       }),
-//     });
-    
-//   };
 
-//   test("renders Transactions Valley and login state", () => {
-//     render(
-//       <AuthProvider>
-//         <App />
-//       </AuthProvider>
-//     );
 
-//     expect(screen.getByText(/Transactions Valley/i)).toBeInTheDocument();
-//     expect(screen.getByText(/Login/i)).toBeInTheDocument();
-//   });
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom/extend-expect';
+import App from '../src/App';
+import { transactionService } from '../src/services/api';
+import { AuthProvider, useAuth } from '../src/context/AuthContext';
+import { csvHandler } from '../src/utils/csvHandler';
+import { act } from 'react-dom/test-utils';
 
-//   test("fetches and displays transactions on page load", async () => {
-//     mockFetch({
-//       transactions: [
-//         { id: 1, date: "2023-01-01", description: "Transaction 1", amount: 100 },
-//         { id: 2, date: "2023-01-02", description: "Transaction 2", amount: 200 },
-//       ],
-//       totalPages: 1,
-//     });
 
-//     render(<App />);
 
-//     await waitFor(() => {
-//       expect(screen.getByText("Transaction 1")).toBeInTheDocument();
-//       expect(screen.getByText("Transaction 2")).toBeInTheDocument();
-//     });
-//   });
+jest.mock('../src/services/api');
+jest.mock('../src/context/AuthContext');
+jest.mock('../src/utils/csvHandler');
 
-//   test("handles fetch error gracefully", async () => {
-//     mockFetch(null, false);
+const mockTransactions = [
+  { id: 1, date: '2025-01-01', description: 'Test Transaction 1', amount: 100, currency: 'USD' },
+  { id: 2, date: '2025-01-02', description: 'Test Transaction 2', amount: 200, currency: 'USD' },
+];
 
-//     render(<App />);
+const mockUser = {
+  photoURL: 'https://example.com/photo.jpg',
+  displayName: 'Test User',
+  email: 'test@example.com',
+};
 
-//     await waitFor(() => {
-//       expect(fetch).toHaveBeenCalled();
-//       const errorElement = screen.queryByText(/Error fetching transactions/i);
-//       expect(errorElement).not.toBeInTheDocument();
-//     });
-//   });
+const mockAuthContext = {
+  user: mockUser,
+  logout: jest.fn(),
+};
 
-//   test("uploads valid CSV file successfully", async () => {
-//     mockFetch({ duplicates: [] });
-
-//     render(<App />);
-
-//     const fileInput = screen.getByLabelText(/UPLOAD CSV/i);
-//     const file = new File(["id,date,description,amount"], "test.csv", { type: "text/csv" });
-
-//     fireEvent.change(fileInput, { target: { files: [file] } });
-
-//     await waitFor(() => {
-//       expect(screen.getByText(/Upload Successful!/i)).toBeInTheDocument();
-//     });
-//   });
-
-//   test("warns on duplicate transactions during upload", async () => {
-//     mockFetch({ duplicates: [1, 2] });
-
-//     render(<App />);
-
-//     const fileInput = screen.getByLabelText(/UPLOAD CSV/i);
-//     const file = new File(["test"], "test.csv", { type: "text/csv" });
-
-//     fireEvent.change(fileInput, { target: { files: [file] } });
-
-//     await waitFor(() => {
-//       expect(screen.getByText(/Found 2 duplicate transactions/i)).toBeInTheDocument();
-//     });
-//   });
-
-//   test("handles file upload failure", async () => {
-//     (fetch as jest.Mock).mockRejectedValueOnce(new Error("Upload failed"));
-
-//     render(<App />);
-
-//     const fileInput = screen.getByLabelText(/UPLOAD CSV/i);
-//     const file = new File(["test"], "test.csv", { type: "text/csv" });
-
-//     fireEvent.change(fileInput, { target: { files: [file] } });
-
-//     await waitFor(() => {
-//       expect(screen.getByText(/Upload Failed!/i)).toBeInTheDocument();
-//     });
-//   });
-
-//   test("toggles restore table visibility", async () => {
-//     render(<App />);
-
-//     const restoreButton = screen.getByText("Restore");
-//     fireEvent.click(restoreButton);
-
-//     await waitFor(() => {
-//       expect(screen.getByText(/restoreTable/i)).toBeInTheDocument();
-//     });
-
-//     fireEvent.click(restoreButton);
-
-//     await waitFor(() => {
-//       expect(screen.queryByText(/restoreTable/i)).not.toBeInTheDocument();
-//     });
-//   });
-
-//   test("adds a new transaction", async () => {
-//     mockFetch({});
-
-//     render(<App />);
-
-//     const addButton = screen.getByText(/Add Transaction/i);
-//     fireEvent.click(addButton);
-
-//     const saveButton = screen.getByText(/Save/i);
-//     fireEvent.click(saveButton);
-
-//     await waitFor(() => {
-//       expect(fetch).toHaveBeenCalledWith(
-//         expect.any(String),
-//         expect.objectContaining({
-//           method: "POST",
-//         })
-//       );
-//     });
-//   });
-
-//   test("deletes a transaction", async () => {
-//     mockFetch({});
-
-//     render(<App />);
-
-//     const deleteButton = screen.getByText(/Delete/i);
-//     fireEvent.click(deleteButton);
-
-//     await waitFor(() => {
-//       expect(fetch).toHaveBeenCalledWith(
-//         expect.any(String),
-//         expect.objectContaining({
-//           method: "DELETE",
-//         })
-//       );
-//     });
-//   });
-
-//   test("logs out user", async () => {
-//     render(<App />);
-
-//     const logoutButton = screen.getByText(/Sign Out/i);
-//     fireEvent.click(logoutButton);
-
-//     await waitFor(() => {
-//       expect(screen.getByText(/Login/i)).toBeInTheDocument();
-//     });
-//   });
-// });
-
-
-// import React from "react";
-// import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-// import App from "../src/App";
-// import { AuthProvider } from "../src/context/AuthContext";
-
-// global.fetch = jest.fn();
-
-// beforeEach(() => {
-//   jest.clearAllMocks();
-// });
-
-// describe("App Component - Comprehensive Tests", () => {
-//   const mockFetch = (
-//     response: { transactions?: any[]; totalPages?: number; duplicates?: number[] } | null,
-//     ok: boolean = true
-//   ) => {
-//     (fetch as jest.Mock).mockResolvedValueOnce({
-//       ok,
-//       json: async (): Promise<any> => response,
-//     });
-//   };
-
-//   test("renders Transactions Valley and login state", () => {
-//     render(
-//       <AuthProvider>
-//         <App />
-//       </AuthProvider>
-//     );
-
-//     expect(screen.getByText(/Transactions Valley/i)).toBeInTheDocument();
-//     expect(screen.getByText(/Login/i)).toBeInTheDocument();
-//   });
-
-//   test("fetches and displays transactions on page load", async () => {
-//     mockFetch({
-//       transactions: [
-//         { id: 1, date: "2023-01-01", description: "Transaction 1", amount: 100 },
-//         { id: 2, date: "2023-01-02", description: "Transaction 2", amount: 200 },
-//       ],
-//       totalPages: 1,
-//     });
-
-//     render(<App />);
-
-//     await waitFor(() => {
-//       expect(screen.getByText("Transaction 1")).toBeInTheDocument();
-//       expect(screen.getByText("Transaction 2")).toBeInTheDocument();
-//     });
-//   });
-
-//   test("handles fetch error gracefully", async () => {
-//     mockFetch(null, false);
-
-//     render(<App />);
-
-//     await waitFor(() => {
-//       expect(fetch).toHaveBeenCalled();
-//       const errorElement = screen.queryByText(/Error fetching transactions/i);
-//       expect(errorElement).not.toBeInTheDocument();
-//     });
-//   });
-
-//   test("uploads valid CSV file successfully", async () => {
-//     mockFetch({ duplicates: [] });
-
-//     render(<App />);
-
-//     const fileInput = screen.getByLabelText(/UPLOAD CSV/i);
-//     const file = new File(["id,date,description,amount"], "test.csv", { type: "text/csv" });
-
-//     fireEvent.change(fileInput, { target: { files: [file] } });
-
-//     await waitFor(() => {
-//       expect(screen.getByText(/Upload Successful!/i)).toBeInTheDocument();
-//     });
-//   });
-
-//   test("warns on duplicate transactions during upload", async () => {
-//     mockFetch({ duplicates: [1, 2] });
-
-//     render(<App />);
-
-//     const fileInput = screen.getByLabelText(/UPLOAD CSV/i);
-//     const file = new File(["test"], "test.csv", { type: "text/csv" });
-
-//     fireEvent.change(fileInput, { target: { files: [file] } });
-
-//     await waitFor(() => {
-//       expect(screen.getByText(/Found 2 duplicate transactions/i)).toBeInTheDocument();
-//     });
-//   });
-
-//   test("handles file upload failure", async () => {
-//     (fetch as jest.Mock).mockRejectedValueOnce(new Error("Upload failed"));
-
-//     render(<App />);
-
-//     const fileInput = screen.getByLabelText(/UPLOAD CSV/i);
-//     const file = new File(["test"], "test.csv", { type: "text/csv" });
-
-//     fireEvent.change(fileInput, { target: { files: [file] } });
-
-//     await waitFor(() => {
-//       expect(screen.getByText(/Upload Failed!/i)).toBeInTheDocument();
-//     });
-//   });
-
-//   test("toggles restore table visibility", async () => {
-//     render(<App />);
-
-//     const restoreButton = screen.getByText("Restore");
-//     fireEvent.click(restoreButton);
-
-//     await waitFor(() => {
-//       expect(screen.getByText(/restoreTable/i)).toBeInTheDocument();
-//     });
-
-//     fireEvent.click(restoreButton);
-
-//     await waitFor(() => {
-//       expect(screen.queryByText(/restoreTable/i)).not.toBeInTheDocument();
-//     });
-//   });
-
-//   test("adds a new transaction", async () => {
-//     mockFetch({});
-
-//     render(<App />);
-
-//     const addButton = screen.getByText(/Add Transaction/i);
-//     fireEvent.click(addButton);
-
-//     const saveButton = screen.getByText(/Save/i);
-//     fireEvent.click(saveButton);
-
-//     await waitFor(() => {
-//       expect(fetch).toHaveBeenCalledWith(
-//         expect.any(String),
-//         expect.objectContaining({
-//           method: "POST",
-//         })
-//       );
-//     });
-//   });
-
-//   test("deletes a transaction", async () => {
-//     mockFetch({});
-
-//     render(<App />);
-
-//     const deleteButton = screen.getByText(/Delete/i);
-//     fireEvent.click(deleteButton);
-
-//     await waitFor(() => {
-//       expect(fetch).toHaveBeenCalledWith(
-//         expect.any(String),
-//         expect.objectContaining({
-//           method: "DELETE",
-//         })
-//       );
-//     });
-//   });
-
-//   test("logs out user", async () => {
-//     render(<App />);
-
-//     const logoutButton = screen.getByText(/Sign Out/i);
-//     fireEvent.click(logoutButton);
-
-//     await waitFor(() => {
-//       expect(screen.getByText(/Login/i)).toBeInTheDocument();
-//     });
-//   });
-// });
-
-
-
-// import React from "react";
-// import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-// import App from "../src/App";
-// import { AuthProvider } from "../src/context/AuthContext";
-
-// global.fetch = jest.fn();
-
-// beforeEach(() => {
-//   jest.clearAllMocks();
-// });
-
-// describe("App Component - Comprehensive Tests", () => {
-//   const mockFetch = (
-//     response,
-//     ok = true
-//   ) => {
-//     (fetch as jest.Mock).mockResolvedValueOnce({
-//       ok,
-//       json: async () => response,
-//     });
-//   };
-
-//   test("renders Transactions Valley and login state", () => {
-//     render(
-//       <AuthProvider>
-//         <App />
-//       </AuthProvider>
-//     );
-//     expect(screen.getByText(/Transactions Valley/i)).toBeInTheDocument();
-//     expect(screen.getByText(/Login/i)).toBeInTheDocument();
-//   });
-
-
-import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import App from "../src/App";
-import { AuthProvider } from "../src/context/AuthContext";
-
-global.fetch = jest.fn();
+const mockCsvHandler = {
+  parseCSV: jest.fn(),
+};
 
 beforeEach(() => {
+  (useAuth as jest.Mock).mockReturnValue(mockAuthContext);
+  (transactionService.getAllTransactions as jest.Mock).mockResolvedValue(mockTransactions);
+  (transactionService.deleteTransaction as jest.Mock).mockResolvedValue({});
+  (transactionService.updateTransaction as jest.Mock).mockResolvedValue({});
+  (transactionService.addTransaction as jest.Mock).mockResolvedValue({});
+  (csvHandler.parseCSV as jest.Mock).mockReturnValue({ validTransactions: mockTransactions, errors: [] });
   jest.clearAllMocks();
 });
 
-describe("App Component - Comprehensive Tests", () => {
-  const mockFetch = (
-    response: {
-      transactions?: { id: number; date: string; description: string; amount: number }[];
-      totalPages?: number;
-      duplicates?: number[];
-    } | null,
-    ok: boolean = true
-  ) => {
-    (fetch as jest.Mock).mockResolvedValueOnce({
-      ok,
-      json: async () => response,
-    });
-  };
-
-  test("renders Transactions Valley and login state", () => {
-    render(
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    );
-
-    expect(screen.getByText(/Transactions Valley/i)).toBeInTheDocument();
-    expect(screen.getByText(/Login/i)).toBeInTheDocument();
+describe('App', () => {
+  test('renders login page if no user', () => {
+    (useAuth as jest.Mock).mockReturnValue({ user: null });
+    render(<AuthProvider><App /></AuthProvider>);
+    expect(screen.getByText(/sign in/i)).toBeInTheDocument();
   });
 
-
-  test("fetches and displays transactions on page load", async () => {
-    mockFetch({
-      transactions: [
-        { id: 1, date: "2023-01-01", description: "Transaction 1", amount: 100 },
-        { id: 2, date: "2023-01-02", description: "Transaction 2", amount: 200 },
-      ],
-      totalPages: 1,
-    });
-
-    render(
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    );
+  test('renders transactions and allows adding transaction', async () => {
+    render(<AuthProvider><App /></AuthProvider>);
 
     await waitFor(() => {
-      expect(screen.getByText("Transaction 1")).toBeInTheDocument();
-      expect(screen.getByText("Transaction 2")).toBeInTheDocument();
+      expect(screen.getByText(/Test Transaction 1/i)).toBeInTheDocument();
+      expect(screen.getByText(/Test Transaction 2/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/add transaction/i));
+    fireEvent.change(screen.getByLabelText(/description/i), { target: { value: 'New Transaction' } });
+    fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '300' } });
+    fireEvent.change(screen.getByLabelText(/currency/i), { target: { value: 'USD' } });
+    fireEvent.click(screen.getByText(/save/i));
+
+    await waitFor(() => {
+      expect(transactionService.addTransaction).toHaveBeenCalled();
     });
   });
 
-  test("handles fetch error gracefully", async () => {
-    mockFetch(null, false);
+  test('handles file upload and parses CSV', async () => {
+    render(<AuthProvider><App /></AuthProvider>);
 
-    render(
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    );
+    const file = new File(['Date,Description,Amount\n2025-01-01,Test,100\n'], 'transactions.csv', { type: 'text/csv' });
+    const input = screen.getByLabelText(/upload csv/i);
+    Object.defineProperty(input, 'files', { value: [file] });
+
+    fireEvent.change(input);
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalled();
+      expect(screen.getByText(/upload successful/i)).toBeInTheDocument();
+    });
+
+    expect(csvHandler.parseCSV).toHaveBeenCalledWith('Date,Description,Amount\n2025-01-01,Test,100\n');
+  });
+
+  test('handles CSV upload errors', async () => {
+    (csvHandler.parseCSV as jest.Mock).mockReturnValue({ validTransactions: [], errors: ['Invalid data'] });
+
+    render(<AuthProvider><App /></AuthProvider>);
+
+    const file = new File(['Date,Description,Amount\n'], 'transactions.csv', { type: 'text/csv' });
+    const input = screen.getByLabelText(/upload csv/i);
+    Object.defineProperty(input, 'files', { value: [file] });
+
+    fireEvent.change(input);
+
+    await waitFor(() => {
+      expect(screen.getByText(/upload failed/i)).toBeInTheDocument();
     });
   });
 
-  test("uploads valid CSV file successfully", async () => {
-    mockFetch({ duplicates: [] });
+  test('handles empty CSV file upload', async () => {
+    render(<AuthProvider><App /></AuthProvider>);
 
-    render(
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    );
+    const file = new File([''], 'transactions.csv', { type: 'text/csv' });
+    const input = screen.getByLabelText(/upload csv/i);
+    Object.defineProperty(input, 'files', { value: [file] });
 
-    const fileInput = screen.getByLabelText(/UPLOAD CSV/i);
-    const file = new File(["id,date,description,amount"], "test.csv", { type: "text/csv" });
-
-    fireEvent.change(fileInput, { target: { files: [file] } });
+    fireEvent.change(input);
 
     await waitFor(() => {
-      expect(screen.getByText(/Upload Successful!/i)).toBeInTheDocument();
+      expect(screen.getByText(/upload failed/i)).toBeInTheDocument();
     });
   });
 
-  test("warns on duplicate transactions during upload", async () => {
-    mockFetch({ duplicates: [1, 2] });
+  test('handles non-CSV file upload', async () => {
+    render(<AuthProvider><App /></AuthProvider>);
 
-    render(
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    );
+    const file = new File(['some content'], 'transactions.txt', { type: 'text/plain' });
+    const input = screen.getByLabelText(/upload csv/i);
+    Object.defineProperty(input, 'files', { value: [file] });
 
-    const fileInput = screen.getByLabelText(/UPLOAD CSV/i);
-    const file = new File(["test"], "test.csv", { type: "text/csv" });
+    fireEvent.change(input);
 
-    fireEvent.change(fileInput, { target: { files: [file] } });
+    expect(window.alert).toHaveBeenCalledWith('Please upload a CSV file');
+  });
+
+  test('handles restore toggle', async () => {
+    render(<AuthProvider><App /></AuthProvider>);
+
+    fireEvent.click(screen.getByText(/restore/i));
 
     await waitFor(() => {
-      expect(screen.getByText(/Found 2 duplicate transactions/i)).toBeInTheDocument();
+      expect(screen.getByText(/restore all/i)).toBeInTheDocument();
     });
   });
 
-  test("handles file upload failure", async () => {
-    (fetch as jest.Mock).mockRejectedValueOnce(new Error("Upload failed"));
+  test('handles transactions view', async () => {
+    render(<AuthProvider><App /></AuthProvider>);
 
-    render(
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    );
-
-    const fileInput = screen.getByLabelText(/UPLOAD CSV/i);
-    const file = new File(["test"], "test.csv", { type: "text/csv" });
-
-    fireEvent.change(fileInput, { target: { files: [file] } });
+    fireEvent.click(screen.getByText(/transactions valley/i));
 
     await waitFor(() => {
-      expect(screen.getByText(/Upload Failed!/i)).toBeInTheDocument();
+      expect(screen.getByText(/add transaction/i)).toBeInTheDocument();
     });
   });
 
-  test("toggles restore table visibility", async () => {
-    render(
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    );
-
-    const restoreButton = screen.getByText("Restore");
-    fireEvent.click(restoreButton);
+  test('allows deleting and restoring transactions', async () => {
+    render(<AuthProvider><App /></AuthProvider>);
 
     await waitFor(() => {
-      expect(screen.getByText(/restoreTable/i)).toBeInTheDocument();
+      expect(screen.getByText(/Test Transaction 1/i)).toBeInTheDocument();
+      expect(screen.getByText(/Test Transaction 2/i)).toBeInTheDocument();
     });
 
-    fireEvent.click(restoreButton);
+    fireEvent.click(screen.getByText(/delete/i, { selector: 'button' }));
 
     await waitFor(() => {
-      expect(screen.queryByText(/restoreTable/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Test Transaction 1/i)).not.toBeInTheDocument();
     });
-  });
 
-  test("adds a new transaction", async () => {
-    mockFetch({});
-
-    render(
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    );
-
-    const addButton = screen.getByText(/Add Transaction/i);
-    fireEvent.click(addButton);
-
-    const saveButton = screen.getByText(/Save/i);
-    fireEvent.click(saveButton);
+    fireEvent.click(screen.getByText(/restore/i));
+    fireEvent.click(screen.getByText(/restore all/i));
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          method: "POST",
-        })
-      );
+      expect(screen.getByText(/Test Transaction 1/i)).toBeInTheDocument();
     });
   });
 
-  test("deletes a transaction", async () => {
-    mockFetch({});
+  test('signs out user', async () => {
+    render(<AuthProvider><App /></AuthProvider>);
 
-    render(
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    );
-
-    const deleteButton = screen.getByText(/Delete/i);
-    fireEvent.click(deleteButton);
+    fireEvent.click(screen.getByText(/sign out/i));
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          method: "DELETE",
-        })
-      );
+      expect(mockAuthContext.logout).toHaveBeenCalled();
     });
   });
 
-  test("logs out user", async () => {
-    render(
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    );
-
-    const logoutButton = screen.getByText(/Sign Out/i);
-    fireEvent.click(logoutButton);
+  test('handles bulk delete and undo transaction', async () => {
+    render(<AuthProvider><App /></AuthProvider>);
 
     await waitFor(() => {
-      expect(screen.getByText(/Login/i)).toBeInTheDocument();
+      expect(screen.getByText(/Test Transaction 1/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByLabelText(/select/i));
+    fireEvent.click(screen.getByText(/bulk delete/i));
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Test Transaction 1/i)).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/undo/i, { selector: 'button' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Test Transaction 1/i)).toBeInTheDocument();
     });
   });
 
-  test("handles bulk delete of transactions", async () => {
-    render(
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    );
+  test('handles page size change', async () => {
+    render(<AuthProvider><App /></AuthProvider>);
 
-    const bulkDeleteButton = screen.getByText(/Bulk Delete/i);
-    fireEvent.click(bulkDeleteButton);
+    const pageSizeSelect = screen.getByLabelText(/page size/i);
+    fireEvent.change(pageSizeSelect, { target: { value: '50' } });
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          method: "DELETE",
-        })
-      );
+      expect(screen.getByDisplayValue('50')).toBeInTheDocument();
     });
   });
 
-  test("restores a deleted transaction", async () => {
-    render(
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    );
+  test('handles restoring a single transaction', async () => {
+    render(<AuthProvider><App /></AuthProvider>);
 
-    const restoreButton = screen.getByText(/Restore/i);
-    fireEvent.click(restoreButton);
-
-    const undoButton = screen.getByText(/Undo/i);
-    fireEvent.click(undoButton);
+    fireEvent.click(screen.getByText(/delete/i, { selector: 'button' }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Transaction Restored/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Test Transaction 1/i)).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/restore/i, { selector: 'button' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Test Transaction 1/i)).toBeInTheDocument();
+    });
+  });
+
+  test('handles error on transaction update', async () => {
+    (transactionService.updateTransaction as jest.Mock).mockRejectedValue(new Error('Update error'));
+
+    render(<AuthProvider><App /></AuthProvider>);
+
+    fireEvent.click(screen.getByText(/edit/i, { selector: 'button' }));
+    fireEvent.change(screen.getByLabelText(/description/i), { target: { value: 'Updated Transaction' } });
+    fireEvent.click(screen.getByText(/save/i));
+
+    await waitFor(() => {
+      expect(screen.getByText(/failed to update transaction/i)).toBeInTheDocument();
+    });
+  });
+
+  test('handles adding empty transaction', async () => {
+    render(<AuthProvider><App /></AuthProvider>);
+
+    fireEvent.click(screen.getByText(/add transaction/i));
+    fireEvent.click(screen.getByText(/save/i));
+
+    await waitFor(() => {
+      expect(screen.getByText(/missing required fields/i)).toBeInTheDocument();
     });
   });
 });
