@@ -13,14 +13,11 @@
     "build:css": "tailwindcss -i ./src/input.css -o ./dist/output.css --watch",
     "test:watch": "jest --watch"
   },
-  "jest":{
+  "jest": {
     "collectCoverage": true,
-    "coverageReporters":"lcov",
+    "coverageReporters": "lcov",
     "coverageDirectory": "./output/code-coverage"
-
-
   },
- 
   "proxy": "http://localhost:5000",
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -30,6 +27,7 @@
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/postcss": "^4.0.0",
     "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
     "firebase": "^11.2.0",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.4",

@@ -84,7 +84,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             <input
               type="date"
               min="1980-01-01"
-              max="2030-12-31"
+              max={new Date().toISOString().split("T")[0]}
               value={transaction.date}
               onChange={(e) => setTransaction({ ...transaction, date: e.target.value })}
               className="w-full p-2 border rounded-md"
