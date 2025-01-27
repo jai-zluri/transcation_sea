@@ -7,7 +7,9 @@ import { currencyUtils } from '../utils/currency';
 import { Transaction, ApiResponse } from '../types';
 
 
-const API_URL = 'https://transcation-valley.onrender.com';
+
+
+const API_URL =   'https://transcation-valley.onrender.com';
 
 
 const api: AxiosInstance = axios.create({

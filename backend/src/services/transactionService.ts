@@ -196,10 +196,11 @@ export const addTransaction = async (req: Request, res: Response): Promise<void>
 
 
 
+
 export const updateTransaction = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { description, amount, currency } = req.body;
+    const { date, description, amount, currency } = req.body;
 
     // Validate if the transaction exists
     const existingTransaction = await prisma.transaction.findUnique({ where: { id: Number(id) } });
@@ -209,29 +210,36 @@ export const updateTransaction = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    // Update the fields and set the date to the current date
-    const updatedTransaction = await prisma.transaction.update({
-      where: { id: Number(id) },
-      data: {
-        description: description || existingTransaction.description,
-        amount: amount ? new Decimal(amount) : existingTransaction.amount,
-        currency: currency || existingTransaction.currency,
-        date: new Date(), // Update the date to the current date
+    // Check for duplicate transaction
+    const duplicateTransaction = await prisma.transaction.findFirst({
+      where: {
+        date: new Date(date),
+        description,
+        amount: new Decimal(amount),
+        currency,
+        id: { not: Number(id) }, // Exclude the current transaction being updated
       },
     });
 
-    // Fetch all transactions sorted by date descending
-    const transactions = await prisma.transaction.findMany({
-      where: { deletedAt: null },
-      orderBy: {
-        date: 'desc',
+    if (duplicateTransaction) {
+      res.status(400).json({ error: 'A transaction with the same date, description, amount, and currency already exists.' });
+      return;
+    }
+
+    // Update the fields
+    const updatedTransaction = await prisma.transaction.update({
+      where: { id: Number(id) },
+      data: {
+        date: new Date(date),
+        description: description || existingTransaction.description,
+        amount: amount ? new Decimal(amount) : existingTransaction.amount,
+        currency: currency || existingTransaction.currency,
       },
     });
 
     res.status(200).json({
       message: 'Transaction updated successfully!',
       transaction: updatedTransaction,
-      transactions, // Return sorted transactions
     });
   } catch (err: unknown) {
     if (err instanceof Error) {

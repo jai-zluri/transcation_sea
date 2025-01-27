@@ -1,7 +1,4 @@
 
-
-
-
 import React, { useState } from 'react';
 import { Transaction } from '../types';
 import { formatters } from '../utils/formatters';
@@ -88,9 +85,17 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   };
 
   const handleEditTransaction = async (updatedTransaction: Transaction) => {
-    await onEdit(updatedTransaction);
-    setEditingTransaction(null);
-    showNotification('Transaction edited successfully!', 'success');
+    try {
+      await onEdit(updatedTransaction);
+      setEditingTransaction(null);
+      showNotification('Transaction edited successfully!', 'success');
+    } catch (error: any) {
+      if (error.response && error.response.data && error.response.data.error) {
+        showNotification(error.response.data.error, 'error'); // Display the error message from the backend
+      } else {
+        showNotification('Failed to edit transaction.', 'error');
+      }
+    }
   };
 
   const handleAddTransaction = async (newTransaction: Transaction) => {
@@ -243,64 +248,63 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                       <Pencil size={16} />
                     </button>
                     <button
-                                    onClick={() => handleDeleteClick(transaction.id!)}
-                                    className="text-red-600 hover:text-red-800"
-                                    title="Delete transaction"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  
-                    <div className="flex justify-between items-center mt-4">
-                      <div className="flex items-center gap-4">
-                    
-                        <select
-  value={pageSize}
-  onChange={handlePageSizeChange}
-  className="px-4 py-2 border rounded-md"
->
-  {[5, 10, 15, 20, 25].map((size) => (
-    <option key={size} value={size}>
-      {size}
-    </option>
-  ))}
-</select>
+                      onClick={() => handleDeleteClick(transaction.id!)}
+                      className="text-red-600 hover:text-red-800"
+                      title="Delete transaction"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-                        <span className="text-sm text-gray-600">
-                          Page {currentPage} of {totalPages}
-                        </span>
-                      </div>
-                  
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handlePreviousPage}
-                          disabled={currentPage === 1}
-                          className="px-4 py-2 bg-red-300 rounded-md disabled:bg-gray-400"
-                        >
-                          Previous
-                        </button>
-                        <button
-                          onClick={handleNextPage}
-                          disabled={currentPage === totalPages}
-                          className="px-4 py-2 bg-red-300 rounded-md disabled:bg-gray-400"
-                        >
-                          Next
-                        </button>
-                      </div>
-                    </div>
-                  
-                    {editingTransaction && (
-                      <EditTransactionModal
-                        transaction={editingTransaction}
-                        onClose={() => setEditingTransaction(null)}
-                        onSave={handleEditTransaction}
-                      />
-                    )}
-                  </>
-          ); };
+      <div className="flex justify-between items-center mt-4">
+        <div className="flex items-center gap-4">
+          <select
+            value={pageSize}
+            onChange={handlePageSizeChange}
+            className="px-4 py-2 border rounded-md"
+          >
+            {[5, 10, 15, 20, 25].map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+          <span className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages}
+          </span>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={handlePreviousPage}
+            disabled={currentPage === 1}
+            className="px-4 py-2 bg-red-300 rounded-md disabled:bg-gray-400"
+          >
+            Previous
+          </button>
+          <button
+            onClick={handleNextPage}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 bg-red-300 rounded-md disabled:bg-gray-400"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
+      {editingTransaction && (
+        <EditTransactionModal
+          transaction={editingTransaction}
+          onClose={() => setEditingTransaction(null)}
+          onSave={handleEditTransaction}
+        />
+      )}
+    </>
+  );
+};
