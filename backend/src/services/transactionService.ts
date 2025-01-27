@@ -2,13 +2,13 @@
 
 import { Request, Response } from 'express';
 import fs from 'fs';
+import path from 'path';
 import Decimal from 'decimal.js';
 import csvParser from 'csv-parser';
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
-
-const MAX_FILE_SIZE = 1 * 1024 * 1024; 
+const MAX_FILE_SIZE = 1 * 1024 * 1024;  // 1MB
 
 export const processCsvFile = async (req: Request, res: Response): Promise<void> => {
   if (!req.file) {
@@ -32,9 +32,12 @@ export const processCsvFile = async (req: Request, res: Response): Promise<void>
 
   const filePath = file.path;
   const transactions: any[] = [];
+  const transactionSet = new Set<string>(); // To track unique transactions
+  const processedTransactions: any[] = []; // To store transactions with status
   
   let isEmpty = true; // To track if the file is empty
   let malformedRows = false; // Flag for malformed rows
+  let duplicateCount = 0; // Counter for duplicate transactions
 
   fs.createReadStream(filePath)
     .pipe(csvParser())
@@ -50,25 +53,37 @@ export const processCsvFile = async (req: Request, res: Response): Promise<void>
           const formattedDate = new Date(`${year}-${month}-${day}T00:00:00Z`);
           if (isNaN(formattedDate.getTime())) {
             malformedRows = true;
+            processedTransactions.push({ ...row, Status: 'Malformed' });
           } else {
-            transactions.push({
-              date: formattedDate,
-              description,
-              amount,
-              currency: row.Currency || null,
-            });
+            const transactionKey = `${formattedDate.toISOString()}|${description}|${amount}|${row.Currency || ''}`;
+            if (transactionSet.has(transactionKey)) {
+              duplicateCount++;
+              processedTransactions.push({ ...row, Status: 'Duplicate' });
+            } else {
+              transactionSet.add(transactionKey);
+              transactions.push({
+                date: formattedDate,
+                description,
+                amount,
+                currency: row.Currency || null,
+              });
+              processedTransactions.push({ ...row, Status: 'Non-Duplicate' });
+            }
           }
         } else {
           malformedRows = true;
+          processedTransactions.push({ ...row, Status: 'Malformed' });
         }
       }
 
       if (isNaN(amount)) {
         malformedRows = true;
+        processedTransactions.push({ ...row, Status: 'Malformed' });
       }
 
       if (!date || !description || isNaN(amount)) {
         malformedRows = true;
+        processedTransactions.push({ ...row, Status: 'Malformed' });
       }
     })
     .on('end', async () => {
@@ -82,14 +97,27 @@ export const processCsvFile = async (req: Request, res: Response): Promise<void>
         return;
       }
 
+      // Create a new CSV file with status column
+      const outputFilePath = path.join(__dirname, 'processed_transactions.csv');
+      const outputStream = fs.createWriteStream(outputFilePath);
+      outputStream.write('Date,Description,Amount,Currency,Status\n');
+      processedTransactions.forEach(transaction => {
+        outputStream.write(`${transaction.Date},${transaction.Description},${transaction.Amount},${transaction.Currency},${transaction.Status}\n`);
+      });
+      outputStream.end();
+
       try {
-        await prisma.transaction.createMany({
-          data: transactions,
-          skipDuplicates: true,
-        });
+        if (transactions.length) {
+          await prisma.transaction.createMany({
+            data: transactions,
+            skipDuplicates: true,
+          });
+        }
         res.status(200).json({
-          message: 'File processed and transactions saved successfully!',
+          message: `File processed successfully! ${duplicateCount} duplicate transactions were found and ignored.`,
           inserted: transactions.length,
+          duplicates: duplicateCount,
+          downloadLink: `http://localhost:5000/transactions/download/processed_transactions.csv` 
         });
       } catch (err) {
         if (err instanceof Error) {
@@ -100,11 +128,18 @@ export const processCsvFile = async (req: Request, res: Response): Promise<void>
       } finally {
         fs.unlinkSync(filePath);
       }
-    })
-  
+    });
 };
 
-
+// Endpoint to handle file download
+export const downloadFile = (req: Request, res: Response): void => {
+  const filePath = path.join(__dirname, 'processed_transactions.csv');
+  res.download(filePath, 'processed_transactions.csv', (err) => {
+    if (err) {
+      res.status(500).json({ error: 'Failed to download file.' });
+    }
+  });
+};
 
 export const getTransactions = async (req: Request, res: Response): Promise<void> => {
   try {

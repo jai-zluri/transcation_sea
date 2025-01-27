@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from 'react';
 import { Upload, AlertCircle, Check, Loader2 } from 'lucide-react';
 import { TransactionTable } from './components/TransactionTable';
@@ -28,6 +30,7 @@ function AppContent() {
   const [restorePageSize, setRestorePageSize] = useState(25);
   const [deletedTransaction, setDeletedTransaction] = useState<Transaction | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const [downloadLink, setDownloadLink] = useState<string | null>(null);
 
   const fetchTransactions = async () => {
     try {
@@ -69,14 +72,10 @@ function AppContent() {
 
     setUploadStatus('uploading');
     try {
-      const fileContent = await file.text();
-      const { validTransactions } = csvHandler.parseCSV(fileContent);
-      
-      // Send parsed data to backend
-      await transactionService.uploadCSV(file);
-
-      setTransactions(prev => [...prev, ...validTransactions]);
+      const response = await transactionService.uploadCSV(file);
+      setTransactions(prev => [...prev, ...(response.transaction || [])]);  // Ensure response.transaction is not undefined
       setUploadStatus('success');
+      setDownloadLink(response.downloadLink || null);  // Ensure response.downloadLink is not undefined
     } catch (error: any) {
       setUploadStatus('error');
       console.error('Error uploading file:', error.message);
@@ -251,6 +250,17 @@ function AppContent() {
                 {uploadStatus === 'uploading' && 'Uploading...'}
                 {uploadStatus === 'success' && 'Upload Successful!'}
                 {uploadStatus === 'error' && 'Upload Failed!'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {downloadLink && (
+          <div className="mb-4 p-4 bg-green-100 text-green-800 rounded-md">
+            <div className="flex items-center gap-2">
+              <Check />
+              <span>
+                Upload Successful! <a href={downloadLink} className="underline">Download Processed CSV</a>
               </span>
             </div>
           </div>
