@@ -6,7 +6,7 @@ import axios, { AxiosInstance } from 'axios';
 import { currencyUtils } from '../utils/currency';
 import { Transaction, ApiResponse } from '../types';
 
-const API_URL =   'http://localhost:5000';
+const API_URL =   'https://transcation-valley.onrender.com';
 
 const api: AxiosInstance = axios.create({
   baseURL: API_URL,

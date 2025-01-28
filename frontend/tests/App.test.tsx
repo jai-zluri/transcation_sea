@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom/extend-expect';
+// import '@testing-library/jest-dom/extend-expect';
 import App from '../src/App';
 import { transactionService } from '../src/services/api';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
