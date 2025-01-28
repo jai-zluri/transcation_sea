@@ -31,6 +31,15 @@ function AppContent() {
   const [deletedTransaction, setDeletedTransaction] = useState<Transaction | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [downloadLink, setDownloadLink] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info'; isVisible: boolean }>({
+    message: '',
+    type: 'info',
+    isVisible: false,
+  });
+
+  const showNotification = (message: string, type: 'success' | 'error' | 'info') => {
+    setNotification({ message, type, isVisible: true });
+  };
 
   const fetchTransactions = async () => {
     try {
@@ -137,6 +146,11 @@ function AppContent() {
 
   const handleAddTransaction = async (transactionData: Omit<Transaction, 'id'>) => {
     try {
+      if (transactions.some(t => t.date === transactionData.date && t.description === transactionData.description && t.amount === transactionData.amount && t.currency === transactionData.currency)) {
+        showNotification('Transaction already exists', 'error');
+        return;
+      }
+
       await transactionService.addTransaction(transactionData);
       setIsAddingTransaction(false);
       fetchTransactions();
