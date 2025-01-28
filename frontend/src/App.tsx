@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Upload, AlertCircle, Check, Loader2 } from 'lucide-react';
 import { TransactionTable } from './components/TransactionTable';
@@ -11,7 +10,7 @@ import { Transaction, UploadStatus } from './types/index';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginPage } from './components/LoginPage';
 import './index.css';
-import toast from 'react-hot-toast'
+import toast from 'react-hot-toast';
 import { AxiosError } from 'axios';
 import { csvHandler } from './utils/csvHandler';
 
@@ -38,13 +37,14 @@ function AppContent() {
     type: 'info',
     isVisible: false,
   });
+  const [loading, setLoading] = useState(true);
 
   const showNotification = (message: string, type: 'success' | 'error' | 'info') => {
     setNotification({ message, type, isVisible: true });
   };
 
-
   const fetchTransactions = async () => {
+    setLoading(true); // Start loading
     try {
       const response = await transactionService.getAllTransactions();
       const sortedTransactions = response.sort(
@@ -54,6 +54,8 @@ function AppContent() {
       setTotalPages(Math.ceil(sortedTransactions.length / pageSize));
     } catch (error) {
       console.error('Error fetching transactions:', error);
+    } finally {
+      setLoading(false); // End loading
     }
   };
 
@@ -73,47 +75,22 @@ function AppContent() {
     setIsRestoreVisible(!isRestoreVisible);
   };
 
-  // const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-  //   const file = event.target.files?.[0];
-  //   if (!file) return;
-
-  //   if (!file.name.endsWith('.csv')) {
-  //     alert('Please upload a CSV file');
-  //     return;
-  //   }
-
-  //   setUploadStatus('uploading');
-  //   try {
-  //     const response = await transactionService.uploadCSV(file);
-  //     setTransactions(prev => [...prev, ...(response.transaction || [])]);  // Ensure response.transaction is not undefined
-  //     setUploadStatus('success');
-  //     setDownloadLink(response.downloadLink || null);  // Ensure response.downloadLink is not undefined
-  //   } catch (error: any) {
-  //     setUploadStatus('error');
-  //     console.error('Error uploading file:', error.message);
-  //     alert(`Error: ${error.message}`);
-  //   } finally {
-  //     setTimeout(() => setUploadStatus(null), 2000);
-  //   }
-  // };
-
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-  
+
     if (!file.name.endsWith('.csv')) {
       alert('Please upload a CSV file');
       return;
     }
-  
+
     setUploadStatus('uploading');
     try {
       const response = await transactionService.uploadCSV(file);
       setTransactions(prev => [...prev, ...(response.transaction || [])]); 
       setUploadStatus('success');
       setDownloadLink(response.downloadLink || null);  
-  
-   
+
       window.location.reload();
     } catch (error: any) {
       setUploadStatus('error');
@@ -331,45 +308,51 @@ function AppContent() {
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow">
-          {isRestoreVisible ? (
-            <RestoreTable
-              restoreTransactions={paginatedRestoreTransactions}
-              onUndo={handleUndoTransaction}
-              onRestoreAll={handleRestoreAll}
-              onDeletePermanently={handleDeletePermanently}
-              onClose={() => setIsRestoreVisible(false)}
-              currentPage={restoreCurrentPage}
-              totalPages={restoreTotalPages}
-              pageSize={restorePageSize}
-              onPageChange={setRestoreCurrentPage}
-              onPageSizeChange={setRestorePageSize}
-            />
-          ) : (
-            <TransactionTable
-              transactions={paginatedTransactions}
-              onDelete={handleDeleteTransaction}
-              onBulkDelete={handleBulkDelete}
-              onAdd={handleAdd}
-              onEdit={handleEditTransaction}
-              selectedTransactions={selectedTransactions}
-              setSelectedTransactions={setSelectedTransactions}
-              pageSize={pageSize}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={setPageSize}
-            />
-          )}
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="animate-spin text-white h-12 w-12" />
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow">
+            {isRestoreVisible ? (
+              <RestoreTable
+                restoreTransactions={paginatedRestoreTransactions}
+                onUndo={handleUndoTransaction}
+                onRestoreAll={handleRestoreAll}
+                onDeletePermanently={handleDeletePermanently}
+                onClose={() => setIsRestoreVisible(false)}
+                currentPage={restoreCurrentPage}
+                totalPages={restoreTotalPages}
+                pageSize={restorePageSize}
+                onPageChange={setRestoreCurrentPage}
+                onPageSizeChange={setRestorePageSize}
+              />
+            ) : (
+              <TransactionTable
+                transactions={paginatedTransactions}
+                onDelete={handleDeleteTransaction}
+                onBulkDelete={handleBulkDelete}
+                onAdd={handleAdd}
+                onEdit={handleEditTransaction}
+                selectedTransactions={selectedTransactions}
+                setSelectedTransactions={setSelectedTransactions}
+                pageSize={pageSize}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+              />
+            )}
 
-          {isAddingTransaction && (
-            <AddTransactionModal
-              onClose={() => setIsAddingTransaction(false)}
-              onSave={handleAddTransaction}
-              existingTransactions={transactions}
-            />
-          )}
-        </div>
+            {isAddingTransaction && (
+              <AddTransactionModal
+                onClose={() => setIsAddingTransaction(false)}
+                onSave={handleAddTransaction}
+                existingTransactions={transactions}
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
