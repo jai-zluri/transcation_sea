@@ -1,8 +1,10 @@
 
 
+
 import { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import { v4 as uuidv4 } from 'uuid'; 
 import Decimal from 'decimal.js';
 import csvParser from 'csv-parser';
 import { PrismaClient } from '@prisma/client';
@@ -97,8 +99,9 @@ export const processCsvFile = async (req: Request, res: Response): Promise<void>
         return;
       }
 
-      // Create a new CSV file with status column
-      const outputFilePath = path.join(__dirname, 'processed_transactions.csv');
+      // Create a new CSV file with a unique name and status column
+      const outputFileName = `processed_transactions_${uuidv4()}.csv`;
+      const outputFilePath = path.join(__dirname, outputFileName);
       const outputStream = fs.createWriteStream(outputFilePath);
       outputStream.write('Date,Description,Amount,Currency,Status\n');
       processedTransactions.forEach(transaction => {
@@ -117,7 +120,7 @@ export const processCsvFile = async (req: Request, res: Response): Promise<void>
           message: `File processed successfully! ${duplicateCount} duplicate transactions were found and ignored.`,
           inserted: transactions.length,
           duplicates: duplicateCount,
-          downloadLink: `http://localhost:5000/transactions/download/processed_transactions.csv` 
+          downloadLink: `http://localhost:5000/transactions/download/${outputFileName}`
         });
       } catch (err) {
         if (err instanceof Error) {
@@ -133,8 +136,9 @@ export const processCsvFile = async (req: Request, res: Response): Promise<void>
 
 // Endpoint to handle file download
 export const downloadFile = (req: Request, res: Response): void => {
-  const filePath = path.join(__dirname, 'processed_transactions.csv');
-  res.download(filePath, 'processed_transactions.csv', (err) => {
+  const fileName = req.params.fileName;
+  const filePath = path.join(__dirname, fileName);
+  res.download(filePath, fileName, (err) => {
     if (err) {
       res.status(500).json({ error: 'Failed to download file.' });
     }
@@ -146,11 +150,9 @@ export const getTransactions = async (req: Request, res: Response): Promise<void
     const transactions = await prisma.transaction.findMany({
       orderBy: {
         date: 'desc', 
-        
       },
     });
     res.json(transactions); 
-  
   } catch (err) {
     if (err instanceof Error) {
       res.status(500).json({
@@ -164,9 +166,6 @@ export const getTransactions = async (req: Request, res: Response): Promise<void
     }
   }
 };
-
-
-
 
 // Get paginated transactions
 export const getPaginatedTransactions = async (req: Request, res: Response): Promise<void> => {
@@ -188,103 +187,6 @@ export const getPaginatedTransactions = async (req: Request, res: Response): Pro
     }
   }
 };
-
-
-// export const addTransaction = async (req: Request, res: Response): Promise<void> => {
-//   const { date, description, amount, currency } = req.body;
-
-//   // Check for missing required fields
-//   if (!date || !description || typeof amount !== 'number') {
-//     res.status(400).json({ error: 'Missing required fields.' });
-//     return;
-//   }
-
-//   // Validate the date
-//   const parsedDate = new Date(date);
-//   const month = parsedDate.getMonth() + 1; // getMonth() returns 0-based month (0 = January, 1 = February, etc.)
-//   const day = parsedDate.getDate();
-
-//   // Check if the day is valid based on the month
-//   if (
-//     (month === 2 && day < 1 || day > 29) || // For February, only days 1-29 are valid
-//     (month !== 2 && day < 1 || day > 31)   // For other months, only days 1-31 are valid
-//   ) {
-//     res.status(400).json({ error: 'Invalid date. Day should be between 1-29 for February or 1-31 for other months.' });
-//     return;
-//   }
-
-//   try {
-//     const transaction = await prisma.transaction.create({
-//       data: { date: parsedDate, description, amount, currency },
-//     });
-//     res.status(201).json(transaction);
-//   } catch (err) {
-//     if (err instanceof Error) {
-//       res.status(500).json({ error: 'Failed to add transaction.', details: err.message });
-//     } else {
-//       res.status(500).json({ error: 'An unexpected error occurred.' });
-//     }
-//   }
-// };
-
-
-
-
-
-
-// export const updateTransaction = async (req: Request, res: Response): Promise<void> => {
-//   try {
-//     const { id } = req.params;
-//     const { date, description, amount, currency } = req.body;
-
-//     // Validate if the transaction exists
-//     const existingTransaction = await prisma.transaction.findUnique({ where: { id: Number(id) } });
-
-//     if (!existingTransaction) {
-//       res.status(404).json({ error: 'Transaction not found.' });
-//       return;
-//     }
-
-//     // Check for duplicate transaction
-//     const duplicateTransaction = await prisma.transaction.findFirst({
-//       where: {
-//         date: new Date(date),
-//         description,
-//         amount: new Decimal(amount),
-//         currency,
-//         id: { not: Number(id) }, // Exclude the current transaction being updated
-//       },
-//     });
-
-//     if (duplicateTransaction) {
-//       res.status(400).json({ error: 'A transaction with the same date, description, amount, and currency already exists.' });
-//       return;
-//     }
-
-//     // Update the fields
-//     const updatedTransaction = await prisma.transaction.update({
-//       where: { id: Number(id) },
-//       data: {
-//         date: new Date(date),
-//         description: description || existingTransaction.description,
-//         amount: amount ? new Decimal(amount) : existingTransaction.amount,
-//         currency: currency || existingTransaction.currency,
-//       },
-//     });
-
-//     res.status(200).json({
-//       message: 'Transaction updated successfully!',
-//       transaction: updatedTransaction,
-//     });
-//   } catch (err: unknown) {
-//     if (err instanceof Error) {
-//       res.status(500).json({ error: 'Failed to update transaction.', details: err.message });
-//     } else {
-//       res.status(500).json({ error: 'An unexpected error occurred.' });
-//     }
-//   }
-// };
-
 
 export const addTransaction = async (req: Request, res: Response): Promise<void> => {
   const { date, description, amount, currency } = req.body;

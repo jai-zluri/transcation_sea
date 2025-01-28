@@ -1,12 +1,11 @@
 
 // services/api.ts
 
-
 import axios, { AxiosInstance } from 'axios';
 import { currencyUtils } from '../utils/currency';
 import { Transaction, ApiResponse } from '../types';
 
-const API_URL =   'https://transcation-valley.onrender.com';
+const API_URL = 'https://transcation-valley.onrender.com';
 
 const api: AxiosInstance = axios.create({
   baseURL: API_URL,
@@ -18,7 +17,7 @@ const api: AxiosInstance = axios.create({
 export const transactionService = {
   getAllTransactions: async (): Promise<Transaction[]> => {
     try {
-      const response = await api.get<Transaction[]>('/transactions/transactions');
+      const response = await api.get<Transaction[]>('/transactions');
       return response.data;
     } catch (error: any) {
       console.error('Error fetching all transactions:', error);
@@ -29,7 +28,7 @@ export const transactionService = {
   addTransaction: async (transactionData: Omit<Transaction, 'id'>): Promise<ApiResponse> => {
     try {
       const response = await api.post<ApiResponse>(
-        '/transactions/transactions',
+        '/transactions',
         {
           ...transactionData,
           amountInINR: currencyUtils.convertToINR(
@@ -48,7 +47,7 @@ export const transactionService = {
   updateTransaction: async (id: number, transactionData: Partial<Transaction>): Promise<ApiResponse> => {
     try {
       const response = await api.put<ApiResponse>(
-        `/transactions/transactions/${id}`,
+        `/transactions/${id}`,
         transactionData
       );
       return response.data;
@@ -60,7 +59,7 @@ export const transactionService = {
 
   deleteTransaction: async (id: number, hardDelete: boolean = false): Promise<void> => {
     try {
-      await api.delete(`/transactions/transactions/${id}`, {
+      await api.delete(`/transactions/${id}`, {
         params: { hard: hardDelete.toString() },
       });
     } catch (error: any) {

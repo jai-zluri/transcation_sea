@@ -1,4 +1,5 @@
 
+
 import express, { Router } from 'express';
 import { upload } from '../helpers/fileHelper';
 import {
@@ -31,7 +32,7 @@ router.put('/transactions/:id', updateTransaction);
 // Delete a transaction (soft or hard delete)
 router.delete('/transactions/:id', deleteTransaction);
 
-// Download processed CSV file
-router.get('/download/processed_transactions.csv', downloadFile);
+// Download processed CSV file with dynamic file name
+router.get('/download/:fileName', downloadFile);
 
 export default router;
