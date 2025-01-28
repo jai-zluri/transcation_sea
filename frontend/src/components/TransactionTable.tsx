@@ -89,7 +89,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     try {
       await onEdit(updatedTransaction);
       setEditingTransaction(null);
-      showNotification('Transaction edited successfully!', 'success');
+     // showNotification('Transaction edited successfully!', 'success');
     } catch (error: any) {
       if (error.response && error.response.data && error.response.data.error) {
         showNotification(error.response.data.error, 'error'); // Display the error message from the backend

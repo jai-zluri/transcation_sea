@@ -11,6 +11,8 @@ import { Transaction, UploadStatus } from './types/index';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginPage } from './components/LoginPage';
 import './index.css';
+import toast from 'react-hot-toast'
+import { AxiosError } from 'axios';
 import { csvHandler } from './utils/csvHandler';
 
 function AppContent() {
@@ -71,21 +73,48 @@ function AppContent() {
     setIsRestoreVisible(!isRestoreVisible);
   };
 
+  // const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = event.target.files?.[0];
+  //   if (!file) return;
+
+  //   if (!file.name.endsWith('.csv')) {
+  //     alert('Please upload a CSV file');
+  //     return;
+  //   }
+
+  //   setUploadStatus('uploading');
+  //   try {
+  //     const response = await transactionService.uploadCSV(file);
+  //     setTransactions(prev => [...prev, ...(response.transaction || [])]);  // Ensure response.transaction is not undefined
+  //     setUploadStatus('success');
+  //     setDownloadLink(response.downloadLink || null);  // Ensure response.downloadLink is not undefined
+  //   } catch (error: any) {
+  //     setUploadStatus('error');
+  //     console.error('Error uploading file:', error.message);
+  //     alert(`Error: ${error.message}`);
+  //   } finally {
+  //     setTimeout(() => setUploadStatus(null), 2000);
+  //   }
+  // };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
+  
     if (!file.name.endsWith('.csv')) {
       alert('Please upload a CSV file');
       return;
     }
-
+  
     setUploadStatus('uploading');
     try {
       const response = await transactionService.uploadCSV(file);
-      setTransactions(prev => [...prev, ...(response.transaction || [])]);  // Ensure response.transaction is not undefined
+      setTransactions(prev => [...prev, ...(response.transaction || [])]); 
       setUploadStatus('success');
-      setDownloadLink(response.downloadLink || null);  // Ensure response.downloadLink is not undefined
+      setDownloadLink(response.downloadLink || null);  
+  
+   
+      window.location.reload();
     } catch (error: any) {
       setUploadStatus('error');
       console.error('Error uploading file:', error.message);
@@ -142,24 +171,42 @@ function AppContent() {
 
       await fetchTransactions();
 
-      console.log('Transaction updated successfully.');
+      toast.success('Transaction updated successfully.');
     } catch (error) {
-      console.error('Failed to update transaction:', error);
+      if (!(error instanceof AxiosError)) {
+        toast.error("Failed to save transaction. Please try again.");
+        return;
+      }
+      const { response, status } = error;
+      if (status === 400) {
+        toast.error(
+          response?.data?.error ||
+            "An unexpected error occurred."
+        );
+      }
     }
   };
 
-  const handleAddTransaction = async (transactionData: Omit<Transaction, 'id'>) => {
+  const handleAddTransaction = async (
+    transactionData: Omit<Transaction, "id">
+  ) => {
     try {
-      if (transactions.some(t => t.date === transactionData.date && t.description === transactionData.description && t.amount === transactionData.amount && t.currency === transactionData.currency)) {
-        showNotification('Transaction already exists', 'error');
-        return;
-      }
-
-      await transactionService.addTransaction(transactionData);
+      const response = await transactionService.addTransaction(transactionData);
+      toast.success("Added transaction");
       setIsAddingTransaction(false);
       fetchTransactions();
     } catch (error) {
-      console.error('Error adding transaction:', error);
+      if (!(error instanceof AxiosError)) {
+        toast.error("Failed to save transaction. Please try again.");
+        return;
+      }
+      const { response, status } = error;
+      if (status === 409) {
+        toast.error(
+          response?.data?.error ||
+            "An unexpected error occurred."
+        );
+      }
     }
   };
 
