@@ -7,7 +7,7 @@ import { EditTransactionModal } from './EditTransactionModal';
 import { Pencil, Trash2, Download } from 'lucide-react';
 import { generateTransactionsPDF } from '../utils/pdfGenerator';
 import { currencyUtils } from '../utils/currency';
-import Notification from './Notification'; 
+import Notification from './Notification';
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -45,7 +45,6 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   const [isDeleteConfirmationVisible, setIsDeleteConfirmationVisible] = useState(false);
   const [deleteConfirmationTransactionId, setDeleteConfirmationTransactionId] = useState<number | null>(null);
 
-  // Show notification
   const showNotification = (message: string, type: 'success' | 'error' | 'info') => {
     setNotificationMessage(message);
     setNotificationType(type);
@@ -89,10 +88,9 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     try {
       await onEdit(updatedTransaction);
       setEditingTransaction(null);
-     // showNotification('Transaction edited successfully!', 'success');
     } catch (error: any) {
       if (error.response && error.response.data && error.response.data.error) {
-        showNotification(error.response.data.error, 'error'); // Display the error message from the backend
+        showNotification(error.response.data.error, 'error');
       } else {
         showNotification('Failed to edit transaction.', 'error');
       }
@@ -140,7 +138,6 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
 
   return (
     <>
-      {/* Notification Component */}
       <Notification
         message={notificationMessage}
         type={notificationType}
@@ -148,7 +145,6 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
         onClose={() => setIsNotificationVisible(false)}
       />
 
-      {/* Delete Confirmation Modal */}
       {isDeleteConfirmationVisible && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-10">
           <div className="bg-white p-6 rounded-md shadow-md w-96">
@@ -218,7 +214,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                 key={transaction.id}
                 className={`${
                   selectedTransactions.includes(transaction.id!) ? 'bg-gray-100' : ''
-                } group`} // Group for hover effect
+                } group`}
                 style={{ cursor: 'pointer' }}
               >
                 <td className="px-6 py-4">
@@ -229,7 +225,9 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                   />
                 </td>
                 <td className="px-6 py-4">{formatters.formatDate(transaction.date)}</td>
-                <td className="px-6 py-4 max-w-xs truncate">{transaction.description}</td>
+                <td className="px-6 py-4 max-w-xs truncate" title={transaction.description}>
+                  {transaction.description}
+                </td>
                 <td className="px-6 py-4 text-right">
                   {formatters.formatAmountWithCurrency(transaction.amount, transaction.currency)}
                 </td>
@@ -263,7 +261,6 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
         </table>
       </div>
 
-      {/* Pagination */}
       <div className="flex justify-between items-center mt-4">
         <div className="flex items-center gap-2">
           <label htmlFor="page-size" className="mr-2">Page Size:</label>
@@ -299,7 +296,6 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
         </div>
       </div>
 
-      {/* Edit Transaction Modal */}
       {editingTransaction && (
         <EditTransactionModal
           transaction={editingTransaction}
