@@ -182,6 +182,7 @@ export const getPaginatedTransactions = async (req: Request, res: Response): Pro
   }
 };
 
+
 export const addTransaction = async (req: Request, res: Response): Promise<void> => {
   const { date, description, amount, currency } = req.body;
 
@@ -205,7 +206,24 @@ export const addTransaction = async (req: Request, res: Response): Promise<void>
     return;
   }
 
+
   try {
+
+    const duplicateTransaction = await prisma.transaction.findFirst({
+      where: {
+        date: new Date(date),
+        description: description.trim(), // Trim spaces from description
+        amount: new Decimal(amount),
+        currency,
+      
+      },
+    });
+
+    if(duplicateTransaction){
+      res.status(409).json({ error: 'A duplicate transaction with the same date, description, amount, and currency already exists.' });
+      return;
+    }
+
     const transaction = await prisma.transaction.create({
       data: { 
         date: parsedDate, 

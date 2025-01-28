@@ -30,7 +30,7 @@ export const transactionService = {
   addTransaction: async (transactionData: Omit<Transaction, 'id'>): Promise<ApiResponse> => {
     try {
       const response = await api.post<ApiResponse>(
-        '/transactions',
+        '/transactions/transactions',
         {
           ...transactionData,
           amountInINR: currencyUtils.convertToINR(
@@ -49,7 +49,7 @@ export const transactionService = {
   updateTransaction: async (id: number, transactionData: Partial<Transaction>): Promise<ApiResponse> => {
     try {
       const response = await api.put<ApiResponse>(
-        `/transactions/${id}`,
+        `/transactions/transactions/${id}`,
         transactionData
       );
       return response.data;

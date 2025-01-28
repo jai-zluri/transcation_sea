@@ -133,8 +133,11 @@ function AppContent() {
   const handleEditTransaction = async (updatedTransaction: Transaction) => {
     try {
       console.log('Updating transaction:', updatedTransaction);
-
-      const response = await transactionService.updateTransaction(updatedTransaction.id!, updatedTransaction);
+      if(updatedTransaction.id === undefined){
+        console.error('Transaction ID not provided.');
+        return;
+      }
+      const response = await transactionService.updateTransaction(updatedTransaction.id, updatedTransaction);
       console.log('API Update Response:', response);
 
       await fetchTransactions();
