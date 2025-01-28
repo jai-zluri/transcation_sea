@@ -17,7 +17,7 @@ const api: AxiosInstance = axios.create({
 export const transactionService = {
   getAllTransactions: async (): Promise<Transaction[]> => {
     try {
-      const response = await api.get<Transaction[]>('/transactions');
+      const response = await api.get<Transaction[]>('/transactions/transactions');
       return response.data;
     } catch (error: any) {
       console.error('Error fetching all transactions:', error);
