@@ -34,7 +34,7 @@ export const currencyUtils = {
   convertToINR: (amount: number, fromCurrency: string): number => {
     const rate = currencyUtils.conversionRates[fromCurrency as keyof typeof currencyUtils.conversionRates];
     if (!rate) {
-      toast.error(`Unsupported currency: ${fromCurrency}`); // Show toast notification for unsupported currency
+     // toast.error(`Unsupported currency: ${fromCurrency}`); // Show toast notification for unsupported currency
       return amount; // Return the amount as is if the currency is unsupported
     }
     return Number((amount * rate).toFixed(2));
