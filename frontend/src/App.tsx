@@ -41,10 +41,11 @@ function AppContent() {
     setNotification({ message, type, isVisible: true });
   };
 
+
   const fetchTransactions = async () => {
     try {
-      const data = await transactionService.getAllTransactions();
-      const sortedTransactions = data.sort(
+      const response = await transactionService.getAllTransactions();
+      const sortedTransactions = response.sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       );
       setTransactions(sortedTransactions);

@@ -32,8 +32,8 @@ export const EditTransactionModal: React.FC<Props> = ({
       newErrors.push('Date must be between 1980 and 2030');
     }
 
-    if (!validation.isValidAmount(formData.amount)) {
-      newErrors.push('Amount must be greater than 0 ');
+    if (formData.amount <= 0) {
+      newErrors.push('Amount must be greater than 0');
     }
 
     if (!validation.isValidDescription(formData.description)) {
@@ -48,8 +48,6 @@ export const EditTransactionModal: React.FC<Props> = ({
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    console.log(`Field changed: ${name}, Value: ${value}`); // Debugging state updates
-
     setFormData((prevFormData) => ({
       ...prevFormData,
       [name]: name === 'amount' ? parseFloat(value) : value,
@@ -58,18 +56,13 @@ export const EditTransactionModal: React.FC<Props> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Submitting form with data:', formData); // Debugging submit
-
     if (validateTransaction()) {
       onSave({
         ...formData,
         date: new Date(formData.date).toISOString(),
       });
-    } else {
-      console.log('Validation failed with errors:', errors); // Debugging validation
     }
   };
-
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">

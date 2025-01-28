@@ -1,200 +1,5 @@
 
 
-// import fs from 'fs';
-// import csvParser from 'csv-parser';
-// import { PrismaClient } from '@prisma/client';
-// import Decimal from 'decimal.js';
-
-// const prisma = new PrismaClient();
-
-// const processCSVRow = (row: any, transactionSet: Set<string>, transactions: any[], processedTransactions: any[]) => {
-//   let malformedRows = false;
-//   let duplicateCount = 0;
-
-//   const date = row.Date?.trim();
-//   const description = row.Description?.trim();
-//   const amount = parseFloat(row.Amount?.trim());
-
-//   if (date) {
-//     const [day, month, year] = date.split('-');
-//     if (day && month && year) {
-//       const formattedDate = new Date(`${year}-${month}-${day}T00:00:00Z`);
-//       if (isNaN(formattedDate.getTime())) {
-//         malformedRows = true;
-//         processedTransactions.push({ ...row, Status: 'Malformed' });
-//       } else {
-//         const transactionKey = `${formattedDate.toISOString()}|${description}|${amount}|${row.Currency || ''}`;
-//         if (transactionSet.has(transactionKey)) {
-//           duplicateCount++;
-//           processedTransactions.push({ ...row, Status: 'Duplicate' });
-//         } else {
-//           transactionSet.add(transactionKey);
-//           transactions.push({
-//             date: formattedDate,
-//             description,
-//             amount,
-//             currency: row.Currency || null,
-//           });
-//           processedTransactions.push({ ...row, Status: 'Non-Duplicate' });
-//         }
-//       }
-//     } else {
-//       malformedRows = true;
-//       processedTransactions.push({ ...row, Status: 'Malformed' });
-//     }
-//   }
-
-//   if (isNaN(amount)) {
-//     malformedRows = true;
-//     processedTransactions.push({ ...row, Status: 'Malformed' });
-//   }
-
-//   if (!date || !description || isNaN(amount)) {
-//     malformedRows = true;
-//     processedTransactions.push({ ...row, Status: 'Malformed' });
-//   }
-
-//   return { malformedRows, duplicateCount };
-// };
-
-// export const processCsvFileService = (filePath: string) => {
-//   return new Promise<{ transactions: any[], processedTransactions: any[], isEmpty: boolean, malformedRows: boolean, duplicateCount: number }>((resolve, reject) => {
-//     const transactions: any[] = [];
-//     const transactionSet = new Set<string>();
-//     const processedTransactions: any[] = [];
-//     let isEmpty = true;
-//     let malformedRows = false;
-//     let duplicateCount = 0;
-
-//     fs.createReadStream(filePath)
-//       .pipe(csvParser())
-//       .on('data', (row) => {
-//         isEmpty = false;
-//         const result = processCSVRow(row, transactionSet, transactions, processedTransactions);
-//         malformedRows = malformedRows || result.malformedRows;
-//         duplicateCount += result.duplicateCount;
-//       })
-//       .on('end', () => {
-//         resolve({ transactions, processedTransactions, isEmpty, malformedRows, duplicateCount });
-//       })
-//       .on('error', (error) => {
-//         reject(error);
-//       });
-//   });
-// };
-
-// export const saveTransactions = async (transactions: any[]) => {
-//   if (transactions.length) {
-//     await prisma.transaction.createMany({
-//       data: transactions,
-//       skipDuplicates: true,
-//     });
-//   }
-// };
-
-// export const generateOutputFile = (processedTransactions: any[], outputFilePath: string) => {
-//   const outputStream = fs.createWriteStream(outputFilePath);
-//   outputStream.write('Date,Description,Amount,Currency,Status\n');
-//   processedTransactions.forEach(transaction => {
-//     outputStream.write(`${transaction.Date},${transaction.Description},${transaction.Amount},${transaction.Currency},${transaction.Status}\n`);
-//   });
-//   outputStream.end();
-// };
-
-// export const getTransactionsService = async () => {
-//   return prisma.transaction.findMany({
-//     orderBy: {
-//       date: 'desc',
-//     },
-//   });
-// };
-
-// export const getPaginatedTransactionsService = async (offset: number, limit: number) => {
-//   const [transactions, totalCount] = await Promise.all([
-//     prisma.transaction.findMany({ skip: offset, take: limit, orderBy: { date: 'desc' } }),
-//     prisma.transaction.count(),
-//   ]);
-//   return { transactions, totalCount };
-// };
-
-// export const addTransactionService = async (data: { date: string, description: string, amount: number, currency?: string }) => {
-//   const { date, description, amount, currency } = data;
-
-//   const parsedDate = new Date(date);
-//   const month = parsedDate.getMonth() + 1;
-//   const day = parsedDate.getDate();
-
-//   if ((month === 2 && day < 1 || day > 29) || (month !== 2 && day < 1 || day > 31)) {
-//       throw new Error('Invalid date. Day should be between 1-29 for February or 1-31 for other months.');
-//   }
-
-//   // Check for existing transaction
-//   const existingTransaction = await prisma.transaction.findFirst({
-//       where: {
-//           date: parsedDate,
-//           description,
-//           amount: new Decimal(amount),
-//           currency,
-//       },
-//   });
-
-//   if (existingTransaction) {
-//       throw new Error('Transaction already exists');
-//   }
-
-//   return prisma.transaction.create({
-//       data: { date: parsedDate, description, amount, currency },
-//   });
-// };
-
-// export const updateTransactionService = async (id: number, data: { date: string, description: string, amount: number, currency?: string }) => {
-//   const existingTransaction = await prisma.transaction.findUnique({ where: { id } });
-
-//   if (!existingTransaction) {
-//     throw new Error('Transaction not found.');
-//   }
-
-//   const { date, description, amount, currency } = data;
-
-//   const duplicateTransaction = await prisma.transaction.findFirst({
-//     where: {
-//       date: new Date(date),
-//       description,
-//       amount: new Decimal(amount),
-//       currency,
-//       id: { not: id },
-//     },
-//   });
-
-//   if (duplicateTransaction) {
-//     throw new Error('A transaction with the same date, description, amount, and currency already exists.');
-//   }
-
-//   return prisma.transaction.update({
-//     where: { id },
-//     data: {
-//       date: new Date(date),
-//       description: description || existingTransaction.description,
-//       amount: amount ? new Decimal(amount) : existingTransaction.amount,
-//       currency: currency || existingTransaction.currency,
-//     },
-//   });
-// };
-
-// export const deleteTransactionService = async (id: number, isHardDelete: boolean) => {
-//   if (isHardDelete) {
-//     await prisma.transaction.delete({ where: { id } });
-//   } else {
-//     await prisma.transaction.update({
-//       where: { id },
-//       data: { deletedAt: new Date() },
-//     });
-//   }
-// };
-
-
-
-
 import { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -385,6 +190,102 @@ export const getPaginatedTransactions = async (req: Request, res: Response): Pro
 };
 
 
+// export const addTransaction = async (req: Request, res: Response): Promise<void> => {
+//   const { date, description, amount, currency } = req.body;
+
+//   // Check for missing required fields
+//   if (!date || !description || typeof amount !== 'number') {
+//     res.status(400).json({ error: 'Missing required fields.' });
+//     return;
+//   }
+
+//   // Validate the date
+//   const parsedDate = new Date(date);
+//   const month = parsedDate.getMonth() + 1; // getMonth() returns 0-based month (0 = January, 1 = February, etc.)
+//   const day = parsedDate.getDate();
+
+//   // Check if the day is valid based on the month
+//   if (
+//     (month === 2 && day < 1 || day > 29) || // For February, only days 1-29 are valid
+//     (month !== 2 && day < 1 || day > 31)   // For other months, only days 1-31 are valid
+//   ) {
+//     res.status(400).json({ error: 'Invalid date. Day should be between 1-29 for February or 1-31 for other months.' });
+//     return;
+//   }
+
+//   try {
+//     const transaction = await prisma.transaction.create({
+//       data: { date: parsedDate, description, amount, currency },
+//     });
+//     res.status(201).json(transaction);
+//   } catch (err) {
+//     if (err instanceof Error) {
+//       res.status(500).json({ error: 'Failed to add transaction.', details: err.message });
+//     } else {
+//       res.status(500).json({ error: 'An unexpected error occurred.' });
+//     }
+//   }
+// };
+
+
+
+
+
+
+// export const updateTransaction = async (req: Request, res: Response): Promise<void> => {
+//   try {
+//     const { id } = req.params;
+//     const { date, description, amount, currency } = req.body;
+
+//     // Validate if the transaction exists
+//     const existingTransaction = await prisma.transaction.findUnique({ where: { id: Number(id) } });
+
+//     if (!existingTransaction) {
+//       res.status(404).json({ error: 'Transaction not found.' });
+//       return;
+//     }
+
+//     // Check for duplicate transaction
+//     const duplicateTransaction = await prisma.transaction.findFirst({
+//       where: {
+//         date: new Date(date),
+//         description,
+//         amount: new Decimal(amount),
+//         currency,
+//         id: { not: Number(id) }, // Exclude the current transaction being updated
+//       },
+//     });
+
+//     if (duplicateTransaction) {
+//       res.status(400).json({ error: 'A transaction with the same date, description, amount, and currency already exists.' });
+//       return;
+//     }
+
+//     // Update the fields
+//     const updatedTransaction = await prisma.transaction.update({
+//       where: { id: Number(id) },
+//       data: {
+//         date: new Date(date),
+//         description: description || existingTransaction.description,
+//         amount: amount ? new Decimal(amount) : existingTransaction.amount,
+//         currency: currency || existingTransaction.currency,
+//       },
+//     });
+
+//     res.status(200).json({
+//       message: 'Transaction updated successfully!',
+//       transaction: updatedTransaction,
+//     });
+//   } catch (err: unknown) {
+//     if (err instanceof Error) {
+//       res.status(500).json({ error: 'Failed to update transaction.', details: err.message });
+//     } else {
+//       res.status(500).json({ error: 'An unexpected error occurred.' });
+//     }
+//   }
+// };
+
+
 export const addTransaction = async (req: Request, res: Response): Promise<void> => {
   const { date, description, amount, currency } = req.body;
 
@@ -410,7 +311,12 @@ export const addTransaction = async (req: Request, res: Response): Promise<void>
 
   try {
     const transaction = await prisma.transaction.create({
-      data: { date: parsedDate, description, amount, currency },
+      data: { 
+        date: parsedDate, 
+        description: description.trim(), // Trim spaces from description
+        amount, 
+        currency 
+      },
     });
     res.status(201).json(transaction);
   } catch (err) {
@@ -421,11 +327,6 @@ export const addTransaction = async (req: Request, res: Response): Promise<void>
     }
   }
 };
-
-
-
-
-
 
 export const updateTransaction = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -444,7 +345,7 @@ export const updateTransaction = async (req: Request, res: Response): Promise<vo
     const duplicateTransaction = await prisma.transaction.findFirst({
       where: {
         date: new Date(date),
-        description,
+        description: description.trim(), // Trim spaces from description
         amount: new Decimal(amount),
         currency,
         id: { not: Number(id) }, // Exclude the current transaction being updated
@@ -461,7 +362,7 @@ export const updateTransaction = async (req: Request, res: Response): Promise<vo
       where: { id: Number(id) },
       data: {
         date: new Date(date),
-        description: description || existingTransaction.description,
+        description: description.trim() || existingTransaction.description, // Trim spaces from description
         amount: amount ? new Decimal(amount) : existingTransaction.amount,
         currency: currency || existingTransaction.currency,
       },
@@ -479,7 +380,6 @@ export const updateTransaction = async (req: Request, res: Response): Promise<vo
     }
   }
 };
-
 
 // Delete a transaction
 export const deleteTransaction = async (req: Request, res: Response): Promise<void> => {
