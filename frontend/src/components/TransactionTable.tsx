@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import { Transaction } from '../types';
 import { formatters } from '../utils/formatters';
@@ -45,6 +43,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   const [isDeleteConfirmationVisible, setIsDeleteConfirmationVisible] = useState(false);
   const [deleteConfirmationTransactionId, setDeleteConfirmationTransactionId] = useState<number | null>(null);
 
+  // Show notification
   const showNotification = (message: string, type: 'success' | 'error' | 'info') => {
     setNotificationMessage(message);
     setNotificationType(type);
@@ -88,9 +87,10 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     try {
       await onEdit(updatedTransaction);
       setEditingTransaction(null);
+     // showNotification('Transaction edited successfully!', 'success');
     } catch (error: any) {
       if (error.response && error.response.data && error.response.data.error) {
-        showNotification(error.response.data.error, 'error');
+        showNotification(error.response.data.error, 'error'); // Display the error message from the backend
       } else {
         showNotification('Failed to edit transaction.', 'error');
       }
@@ -138,6 +138,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
 
   return (
     <>
+      {/* Notification Component */}
       <Notification
         message={notificationMessage}
         type={notificationType}
@@ -145,6 +146,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
         onClose={() => setIsNotificationVisible(false)}
       />
 
+      {/* Delete Confirmation Modal */}
       {isDeleteConfirmationVisible && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-10">
           <div className="bg-white p-6 rounded-md shadow-md w-96">
@@ -214,7 +216,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                 key={transaction.id}
                 className={`${
                   selectedTransactions.includes(transaction.id!) ? 'bg-gray-100' : ''
-                } group`}
+                } group`} // Group for hover effect
                 style={{ cursor: 'pointer' }}
               >
                 <td className="px-6 py-4">
@@ -225,8 +227,13 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                   />
                 </td>
                 <td className="px-6 py-4">{formatters.formatDate(transaction.date)}</td>
-                <td className="px-6 py-4 max-w-xs truncate" title={transaction.description}>
-                  {transaction.description}
+                <td className="px-6 py-4 max-w-xs truncate relative group">
+                  <div className="tooltip">
+                    {transaction.description}
+                    <span className="tooltip-text absolute hidden group-hover:block bg-black text-white text-center rounded-md p-2 w-64 bottom-full left-1/2 transform -translate-x-1/2 mb-2">
+                      {transaction.description}
+                    </span>
+                  </div>
                 </td>
                 <td className="px-6 py-4 text-right">
                   {formatters.formatAmountWithCurrency(transaction.amount, transaction.currency)}
@@ -261,6 +268,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
         </table>
       </div>
 
+      {/* Pagination */}
       <div className="flex justify-between items-center mt-4">
         <div className="flex items-center gap-2">
           <label htmlFor="page-size" className="mr-2">Page Size:</label>
@@ -296,6 +304,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
         </div>
       </div>
 
+      {/* Edit Transaction Modal */}
       {editingTransaction && (
         <EditTransactionModal
           transaction={editingTransaction}
