@@ -7,6 +7,8 @@ import { Transaction, ApiResponse } from '../types';
 
 const API_URL = 'https://transcation-valley.onrender.com';
 
+//const API_URL = 'http://localhost:5000';
+
 const api: AxiosInstance = axios.create({
   baseURL: API_URL,
   headers: {

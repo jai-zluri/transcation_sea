@@ -1,6 +1,5 @@
 
 
-
 import { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -35,14 +34,14 @@ export const processCsvFile = async (req: Request, res: Response): Promise<void>
   const filePath = file.path;
   const transactions: any[] = [];
   const transactionSet = new Set<string>(); // To track unique transactions
-  const processedTransactions: any[] = []; // To store transactions with status
-  
+  const processedTransactions: any[] = []; // To store processed transactions with status
+
   let isEmpty = true; // To track if the file is empty
   let malformedRows = false; // Flag for malformed rows
   let duplicateCount = 0; // Counter for duplicate transactions
 
   fs.createReadStream(filePath)
-    .pipe(csvParser())
+    .pipe(csvParser(['Date', 'Description', 'Amount', 'Currency']))
     .on('data', (row) => {
       isEmpty = false; 
       const date = row.Date?.trim();
@@ -94,11 +93,6 @@ export const processCsvFile = async (req: Request, res: Response): Promise<void>
         return;
       }
 
-      if (malformedRows) {
-        res.status(400).json({ error: 'CSV contains malformed rows. Please fix and retry.' });
-        return;
-      }
-
       // Create a new CSV file with a unique name and status column
       const outputFileName = `processed_transactions_${uuidv4()}.csv`;
       const outputFilePath = path.join(__dirname, outputFileName);
@@ -120,7 +114,7 @@ export const processCsvFile = async (req: Request, res: Response): Promise<void>
           message: `File processed successfully! ${duplicateCount} duplicate transactions were found and ignored.`,
           inserted: transactions.length,
           duplicates: duplicateCount,
-          downloadLink: `https://transcation-valley.onrender.com/transactions/download/${outputFileName}`
+          downloadLink: `http://localhost:5000/transactions/download/${outputFileName}`
         });
       } catch (err) {
         if (err instanceof Error) {
