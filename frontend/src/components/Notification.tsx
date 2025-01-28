@@ -1,5 +1,4 @@
 
-
 import React, { useEffect } from 'react';
 
 interface NotificationProps {
@@ -58,4 +57,3 @@ const Notification: React.FC<NotificationProps> = ({
 };
 
 export default Notification;
-

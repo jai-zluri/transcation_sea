@@ -125,11 +125,25 @@ export const addTransactionService = async (data: { date: string, description: s
   const day = parsedDate.getDate();
 
   if ((month === 2 && day < 1 || day > 29) || (month !== 2 && day < 1 || day > 31)) {
-    throw new Error('Invalid date. Day should be between 1-29 for February or 1-31 for other months.');
+      throw new Error('Invalid date. Day should be between 1-29 for February or 1-31 for other months.');
+  }
+
+  // Check for existing transaction
+  const existingTransaction = await prisma.transaction.findFirst({
+      where: {
+          date: parsedDate,
+          description,
+          amount: new Decimal(amount),
+          currency,
+      },
+  });
+
+  if (existingTransaction) {
+      throw new Error('Transaction already exists');
   }
 
   return prisma.transaction.create({
-    data: { date: parsedDate, description, amount, currency },
+      data: { date: parsedDate, description, amount, currency },
   });
 };
 

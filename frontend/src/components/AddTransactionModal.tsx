@@ -11,7 +11,7 @@ interface AddTransactionModalProps {
   onClose: () => void;
   onSave: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
   checkDuplicate?: (newTransaction: Omit<Transaction, 'id'>) => boolean;
-  existingTransactions: Transaction[]; // Add this line
+  existingTransactions: Transaction[];
 }
 
 export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({

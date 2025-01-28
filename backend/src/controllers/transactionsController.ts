@@ -57,13 +57,22 @@ export const getPaginatedTransactions = async (req: Request, res: Response) => {
   }
 };
 
-export const addTransaction = async (req: Request, res: Response) => {
+
+
+export const addTransaction = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { date, description, amount, currency } = req.body;
-    const result = await addTransactionService({ date, description, amount, currency });
-    res.status(201).json(result);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to add transaction.' });
+      const transaction = await addTransactionService(req.body);
+      res.status(201).json(transaction);
+  } catch (err) {
+      if (err instanceof Error) {
+          if (err.message === 'Transaction already exists') {
+              res.status(409).json({ error: err.message });
+          } else {
+              res.status(500).json({ error: 'Error adding transaction', details: err.message });
+          }
+      } else {
+          res.status(500).json({ error: 'An unknown error occurred.' });
+      }
   }
 };
 
