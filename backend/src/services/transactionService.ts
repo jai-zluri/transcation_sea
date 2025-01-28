@@ -120,7 +120,7 @@ export const processCsvFile = async (req: Request, res: Response): Promise<void>
           message: `File processed successfully! ${duplicateCount} duplicate transactions were found and ignored.`,
           inserted: transactions.length,
           duplicates: duplicateCount,
-          downloadLink: `http://localhost:5000/transactions/download/${outputFileName}`
+          downloadLink: `https://transcation-valley.onrender.com/transactions/download/${outputFileName}`
         });
       } catch (err) {
         if (err instanceof Error) {
