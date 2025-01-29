@@ -61,7 +61,7 @@ export const transactionService = {
 
   deleteTransaction: async (id: number, hardDelete: boolean = false): Promise<void> => {
     try {
-      await api.delete(`/transactions/${id}`, {
+      await api.delete(`/transactions/transactions/${id}`, {
         params: { hard: hardDelete.toString() },
       });
     } catch (error: any) {
